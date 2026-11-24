@@ -147,6 +147,8 @@
           <span id="hora-txt"></span>
         </div>
         <label class="opcion"><input type="checkbox" id="ver-max"> Ver la profundidad máxima alcanzada</label>
+        <button class="sec ancho" id="btn-maqueta">Ver maqueta 3D del círculo</button>
+        <p class="mini">La maqueta muestra el círculo recortado como un bloque de tierra, con la imagen satelital y el agua de cada hora. Adaptada, con permiso, de la maqueta de Diamela Dego.</p>
         <h3>Mensaje que recibiría el agricultor</h3>
         <div class="whatsapp" id="msg-sim"></div>
         <button class="sec" data-copiar="msg-sim">Copiar mensaje</button>
@@ -154,7 +156,7 @@
       </div>
     </section>
     <footer class="creditos">
-      Relieve: AWS Terrain Tiles (SRTM). Mapa: © OpenStreetMap, OpenFreeMap. Imagen: Esri World Imagery. Clima: Open-Meteo (ERA5, pronósticos). Sentinel‑2 y Landsat: Copernicus/ESA, USGS/NASA vía Microsoft Planetary Computer. Motor hidráulico adaptado, con permiso, del observatorio de <a href="https://github.com/diamedego/Mapa-de-riesgo-super-ni-o" target="_blank" rel="noopener">Diamela Dego</a>. Herramienta orientativa: ante una emergencia siga las indicaciones de la UNGRD, el IDEAM y la CAR.
+      Relieve: AWS Terrain Tiles (SRTM). Mapa: © OpenStreetMap, OpenFreeMap. Imagen: Esri World Imagery. Clima: Open-Meteo (ERA5, pronósticos). Sentinel‑2 y Landsat: Copernicus/ESA, USGS/NASA vía Microsoft Planetary Computer. Motor hidráulico y maqueta 3D adaptados, con permiso, del observatorio de <a href="https://github.com/diamedego/Mapa-de-riesgo-super-ni-o" target="_blank" rel="noopener">Diamela Dego</a>. Herramienta orientativa: ante una emergencia siga las indicaciones de la UNGRD, el IDEAM y la CAR.
     </footer>
   </aside>
 
@@ -190,6 +192,7 @@
 <script src="js/geo.js"></script>
 <script src="js/hidraulica.js"></script>
 <script src="js/inundacion.js"></script>
+<script src="js/maqueta.js"></script>
 <script src="js/clima.js"></script>
 <script src="js/satelite.js"></script>
 <script src="js/finca_ejemplo.js"></script>
