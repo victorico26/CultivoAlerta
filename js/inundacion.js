@@ -191,7 +191,7 @@ async function prepararTerreno(finca, circ, avisar = () => {}) {
   const coordenadas = [esq(X0, Y0), esq(X1, Y0), esq(X1, Y1), esq(X0, Y1)];
   let zf = [Infinity, -Infinity];
   for (let i = 0; i < N; i++) if (enFinca[i]) zf = [Math.min(zf[0], z[i]), Math.max(zf[1], z[i])];
-  return { s, nx, ny, N, dx, f, FW, FH, zFino, dentroFino, z, tipo2, lago, nLagos: nl, cauce, baseRio, imp: fi, nMan, dentro, enFinca, nFinca, nDentro, coordenadas,
+  return { s, nx, ny, N, dx, f, FW, FH, zFino, dentroFino, zoom: D.z, gx0: D.tx0 * 256 + bx0, gy0: D.ty0 * 256 + by0, metrosPx, z, tipo2, lago, nLagos: nl, cauce, baseRio, imp: fi, nMan, dentro, enFinca, nFinca, nDentro, coordenadas,
     resumen: { rios: nRios, lagunas: nLagunas, celdaM: dx, altFinca: zf, hayRio: tipo2.some((t) => t === 3) } };
 }
 

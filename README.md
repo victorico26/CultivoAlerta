@@ -26,7 +26,7 @@ Prototipo funcional del trabajo final de TIG. Una sola finca registrada alimenta
 
 ## Fuentes y créditos
 
-Relieve: AWS Terrain Tiles (SRTM ~30 m). Mapa base: © OpenStreetMap (OpenMapTiles, OpenFreeMap). Imagen: Esri World Imagery. Clima: Open-Meteo (ERA5 y pronósticos). Motor hidráulico, grilla y parámetros de suelo adaptados, con permiso de la autora, del observatorio de riesgo de inundación de Diamela Dego (<https://github.com/diamedego/Mapa-de-riesgo-super-ni-o>).
+Relieve: AWS Terrain Tiles (SRTM ~30 m). Mapa base: © OpenStreetMap (OpenMapTiles, OpenFreeMap). Imagen: Esri World Imagery. Clima: Open-Meteo (ERA5 y pronósticos). Motor hidráulico, grilla, parámetros de suelo y maqueta 3D (terrón, puntos cardinales y cámara orbital, con three.js) adaptados, con permiso de la autora, del observatorio de riesgo de inundación de Diamela Dego (<https://github.com/diamedego/Mapa-de-riesgo-super-ni-o>).
 
 ## Limitaciones conocidas (para las siguientes versiones)
 
