@@ -62,6 +62,7 @@ function irA(tab) {
   document.querySelectorAll(".pestana").forEach((b) => b.classList.toggle("activa", b.dataset.tab === tab));
   document.querySelectorAll(".seccion").forEach((s) => s.classList.toggle("activa", s.id === `tab-${tab}`));
   if (tab === "vigor" && finca) cargarClima();
+  if (tab !== "inundacion") cerrarMaquetaUI();
   if (tab === "inundacion" && circ) { const c = cajaCirculo(circ.centro, circ.km * 1.15); mapa.fitBounds([[c[0], c[1]], [c[2], c[3]]], { padding: 30, duration: 700 }); }
 }
 document.querySelectorAll(".pestana").forEach((b) => (b.onclick = () => !b.disabled && irA(b.dataset.tab)));
@@ -117,7 +118,7 @@ function establecerFinca(f, encuadrar = true) {
   document.querySelectorAll(".pestana").forEach((b) => (b.disabled = false));
   if (encuadrar) verFinca();
   try { localStorage.setItem(CLAVE_GUARDADO, JSON.stringify(f)); } catch {}
-  terreno = null; clima = null; detenerModelo(); quitarAgua(); $("resultado").hidden = true; $("leyenda").hidden = true;
+  terreno = null; clima = null; detenerModelo(); quitarAgua(); cerrarMaquetaUI(); $("resultado").hidden = true; $("leyenda").hidden = true;
 }
 function actualizarRadio() {
   if (!finca) return;
@@ -125,7 +126,7 @@ function actualizarRadio() {
   mapa.getSource("circulo").setData({ type: "Feature", geometry: circuloGeo(circ.centro, circ.km), properties: {} });
   $("f-radio").textContent = `${fmt(circ.km, 2)} km${circ.km >= 3 ? " (máximo)" : ""}`;
 }
-$("margen").oninput = () => { $("margen-v").textContent = `${fmt(+$("margen").value, 1)} km`; actualizarRadio(); terreno = null; };
+$("margen").oninput = () => { $("margen-v").textContent = `${fmt(+$("margen").value, 1)} km`; actualizarRadio(); terreno = null; cerrarMaquetaUI(); };
 function verFinca() {
   const [o, s, e, n] = cajaDe(finca);
   const c = cajaCirculo(circ.centro, circ.km);
@@ -134,6 +135,7 @@ function verFinca() {
 $("btn-zoom").onclick = verFinca;
 $("btn-borrar").onclick = () => {
   finca = circ = terreno = clima = null; detenerModelo(); quitarAgua();
+  cerrarMaquetaUI();
   mapa.getSource("finca").setData(VACIO); mapa.getSource("finca-etiqueta").setData(VACIO); mapa.getSource("circulo").setData(VACIO);
   $("info-finca").hidden = true; $("resultado").hidden = true; $("leyenda").hidden = true; avisoFinca("");
   document.querySelectorAll(".pestana").forEach((b) => (b.disabled = b.dataset.tab !== "finca"));
@@ -323,6 +325,7 @@ function mostrarResultado(M) {
     kpi("Tiempo con agua", `${R.horasAgua} h`, "Horas con más del 5 % de la finca inundado"),
     kpi("Círculo con agua (pico)", `${fmt(R.pctCirculoPico, 0)} %`, `Radio de ${fmt(circ.km, 2)} km alrededor`),
   ].join("");
+  if (maqueta && maqueta.d !== M.d) cerrarMaquetaUI();   // otro terreno: la maqueta vieja ya no sirve
   const h = $("hora"); h.max = M.stats.length - 1; M.hora = R.pico;
   $("ver-max").checked = false;
   irAHora(R.pico);
@@ -344,7 +347,24 @@ async function irAHora(k) {
   $("hora-txt").textContent = verMax ? "Máximo alcanzado" : `${cuando} · ${fmt(st.haFinca, 2)} ha`;
   graficoSimulacion($("graf-sim"), modelo, k);
   await dibujarAgua(modelo, k, verMax);
+  if (maqueta) actualizarMaqueta(modelo, k, verMax);
 }
+
+// ---------- Maqueta 3D del círculo ----------
+$("btn-maqueta").onclick = async () => {
+  if (maqueta) return cerrarMaquetaUI();
+  if (!modelo?.d) return;
+  const btn = $("btn-maqueta"); btn.disabled = true;
+  try {
+    const M = await crearMaqueta(modelo.d, document.querySelector(".mapa-cont"), finca, (t) => (btn.textContent = t));
+    M.capa.querySelector(".maqueta-cerrar").onclick = cerrarMaquetaUI;
+    M.redimensionar();
+    actualizarMaqueta(modelo, modelo.hora ?? 0, $("ver-max").checked);
+    btn.textContent = "Volver al mapa";
+  } catch (e) { console.error(e); cerrarMaquetaUI(); avisoSim(`No se pudo armar la maqueta 3D: ${e.message}`, true); }
+  btn.disabled = false;
+};
+function cerrarMaquetaUI() { cerrarMaqueta(); $("btn-maqueta").textContent = "Ver maqueta 3D del círculo"; }
 $("hora").oninput = () => { pararReproduccion(); $("ver-max").checked = false; irAHora(+$("hora").value); };
 $("ver-max").onchange = () => irAHora(modelo?.hora ?? 0);
 function pararReproduccion() { if (reproduciendo) { clearInterval(reproduciendo); reproduciendo = null; } $("btn-play").textContent = "▶"; }
