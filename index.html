@@ -83,8 +83,10 @@
         <div class="whatsapp" id="msg-clima"></div>
         <button class="sec" data-copiar="msg-clima">Copiar mensaje</button>
         <div class="tarjeta nota">
-          <b>Vigor (NDVI, NDMI) y temperatura de superficie satelital (LST)</b>
-          <p>Se calculan sobre el polígono de la finca en Google Earth Engine con <code>gee/cultivoalerta_vigor_temperatura.js</code>: Sentinel‑2 cada ~5 días (10 m) para el vigor y la humedad del cultivo, y Landsat 8/9 (100 m remuestreado a 30 m) y MODIS (1 km, diario) para la temperatura de superficie. La próxima versión los mostrará aquí.</p>
+          <b>Mapas satelitales de tu finca</b>
+          <p>Elige en el menú del mapa la capa que quieres ver: temperatura de la superficie, lluvia del último mes, vigor de las plantas (NDVI) o agua en las hojas (NDMI). Cada mapa se recorta al círculo de análisis y trae su leyenda y una explicación corta.</p>
+          <ul class="sat-resumen" id="sat-resumen"></ul>
+          <p class="mini">Imágenes de Sentinel‑2 y Landsat 8/9 desde el catálogo público de Microsoft Planetary Computer: se usa la fecha más reciente con el círculo despejado de nubes. Al servidor solo viaja la caja del círculo, no el lindero. Las series de tiempo y la anomalía de NDVI siguen en <code>gee/cultivoalerta_vigor_temperatura.js</code>.</p>
         </div>
       </div>
     </section>
@@ -152,7 +154,7 @@
       </div>
     </section>
     <footer class="creditos">
-      Relieve: AWS Terrain Tiles (SRTM). Mapa: © OpenStreetMap, OpenFreeMap. Imagen: Esri World Imagery. Clima: Open-Meteo (ERA5, pronósticos). Motor hidráulico adaptado, con permiso, del observatorio de <a href="https://github.com/diamedego/Mapa-de-riesgo-super-ni-o" target="_blank" rel="noopener">Diamela Dego</a>. Herramienta orientativa: ante una emergencia siga las indicaciones de la UNGRD, el IDEAM y la CAR.
+      Relieve: AWS Terrain Tiles (SRTM). Mapa: © OpenStreetMap, OpenFreeMap. Imagen: Esri World Imagery. Clima: Open-Meteo (ERA5, pronósticos). Sentinel‑2 y Landsat: Copernicus/ESA, USGS/NASA vía Microsoft Planetary Computer. Motor hidráulico adaptado, con permiso, del observatorio de <a href="https://github.com/diamedego/Mapa-de-riesgo-super-ni-o" target="_blank" rel="noopener">Diamela Dego</a>. Herramienta orientativa: ante una emergencia siga las indicaciones de la UNGRD, el IDEAM y la CAR.
     </footer>
   </aside>
 
@@ -162,6 +164,13 @@
       <button id="btn-base" class="chip activo">Satélite</button>
       <button id="btn-3d" class="chip">Vista 3D</button>
     </div>
+    <div class="menu-sat" id="menu-sat" hidden>
+      <b>Capa del mapa</b>
+      <div class="menu-sat-botones">
+        <button data-capa="temperatura">Temperatura</button><button data-capa="lluvia">Lluvia</button><button data-capa="ndvi">NDVI</button><button data-capa="ndmi">NDMI</button><button data-capa="">Ninguna</button>
+      </div>
+    </div>
+    <div class="leyenda leyenda-sat" id="leyenda-sat" hidden></div>
     <div class="dibujo-barra" id="dibujo-barra" hidden>
       <span>Haz clic para marcar las esquinas de la finca · doble clic para terminar</span>
       <button id="btn-fin-dibujo" class="prim">Terminar</button><button id="btn-cancelar-dibujo" class="sec">Cancelar</button>
@@ -182,6 +191,7 @@
 <script src="js/hidraulica.js"></script>
 <script src="js/inundacion.js"></script>
 <script src="js/clima.js"></script>
+<script src="js/satelite.js"></script>
 <script src="js/finca_ejemplo.js"></script>
 <script src="js/app.js"></script>
 </body>

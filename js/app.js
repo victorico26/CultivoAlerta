@@ -62,6 +62,15 @@ function irA(tab) {
   document.querySelectorAll(".pestana").forEach((b) => b.classList.toggle("activa", b.dataset.tab === tab));
   document.querySelectorAll(".seccion").forEach((s) => s.classList.toggle("activa", s.id === `tab-${tab}`));
   if (tab === "vigor" && finca) cargarClima();
+  $("menu-sat").hidden = !(tab === "vigor" && finca);
+  if (tab === "vigor" && finca) {
+    const c = cajaCirculo(circ.centro, circ.km * 1.1), ancho = mapa.getContainer().clientWidth;
+    mapa.fitBounds([[c[0], c[1]], [c[2], c[3]]], { padding: { top: 110, bottom: 30, right: 40, left: Math.min(330, ancho * 0.45) }, duration: 700 });
+    elegirCapaSat(capaSat);
+  }
+  else { ocultarCapaSat(); $("leyenda-sat").hidden = true; }
+  if (mapa.getLayer("agua-sim")) mapa.setLayoutProperty("agua-sim", "visibility", tab === "vigor" ? "none" : "visible");
+  $("leyenda").classList.toggle("oculta-vigor", tab === "vigor");
   if (tab === "inundacion" && circ) { const c = cajaCirculo(circ.centro, circ.km * 1.15); mapa.fitBounds([[c[0], c[1]], [c[2], c[3]]], { padding: 30, duration: 700 }); }
 }
 document.querySelectorAll(".pestana").forEach((b) => (b.onclick = () => !b.disabled && irA(b.dataset.tab)));
@@ -134,6 +143,7 @@ function verFinca() {
 $("btn-zoom").onclick = verFinca;
 $("btn-borrar").onclick = () => {
   finca = circ = terreno = clima = null; detenerModelo(); quitarAgua();
+  quitarCapaSat(); satCache = {}; $("menu-sat").hidden = true; $("leyenda-sat").hidden = true; $("sat-resumen").innerHTML = "";
   mapa.getSource("finca").setData(VACIO); mapa.getSource("finca-etiqueta").setData(VACIO); mapa.getSource("circulo").setData(VACIO);
   $("info-finca").hidden = true; $("resultado").hidden = true; $("leyenda").hidden = true; avisoFinca("");
   document.querySelectorAll(".pestana").forEach((b) => (b.disabled = b.dataset.tab !== "finca"));
@@ -267,6 +277,65 @@ function pintarClima(c) {
   const principales = c.alertas.filter((x) => x.nivel !== "ok");
   $("msg-clima").textContent = `CultivoAlerta · ${finca.properties.nombre}\n${fecha}\n\nAhora: ${a.temperature_2m != null ? fmt(a.temperature_2m) + " °C" : "–"} · suelo ${c.sueloAhora.t0 != null ? fmt(c.sueloAhora.t0) + " °C" : "–"}\nMínima próxima noche: ${Number.isFinite(minProx) ? fmt(minProx) + " °C" : "–"}\nLluvia 30 días: ${fmt(c.lluvia30, 0)} mm (balance ${c.balance30 >= 0 ? "+" : ""}${fmt(c.balance30, 0)} mm)\n\n`
     + (principales.length ? principales.map((x) => `⚠️ ${x.titulo}: ${x.texto}`).join("\n") : "✅ Sin alertas para los próximos 7 días.");
+}
+
+// ---------- Mapas satelitales del círculo (temperatura, lluvia, NDVI, NDMI) ----------
+let capaSat = "ndvi", satCache = {}, satTurno = 0;
+document.querySelectorAll("#menu-sat button").forEach((b) => (b.onclick = () => elegirCapaSat(b.dataset.capa)));
+const fechaSat = (f) => new Date(f.length > 10 ? f : `${f}T12:00:00-05:00`).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Bogota" });
+async function elegirCapaSat(clave) {
+  capaSat = clave;
+  document.querySelectorAll("#menu-sat button").forEach((b) => b.classList.toggle("activo", b.dataset.capa === clave));
+  const turno = ++satTurno;
+  if (!clave || !circ) { ocultarCapaSat(); $("leyenda-sat").hidden = true; return; }
+  const ck = `${circ.centro.join()}|${circ.km}|${finca.properties.nombre}`;
+  if (satCache.ck !== ck) { satCache = { ck }; $("sat-resumen").innerHTML = ""; }
+  const capa = CAPAS_SAT[clave], ley = $("leyenda-sat");
+  ley.hidden = false;
+  const avance = (t) => { if (satTurno === turno) ley.innerHTML = `<b>${capa.titulo}</b><div class="cargando">${t}</div>`; };
+  if (!satCache[clave]) {
+    ocultarCapaSat(); avance("Preparando…");
+    satCache[clave] = (clave === "lluvia" ? capaLluvia(circ.centro, circ.km, finca, avance) : capaSatelital(clave, circ.centro, circ.km, finca, avance))
+      .catch((e) => { delete satCache[clave]; throw e; });
+  } else if (!satCache[clave].listo) { ocultarCapaSat(); avance("Cargando…"); }
+  let r;
+  try { r = await satCache[clave]; if (satCache[clave]) satCache[clave].listo = true; }
+  catch (e) { console.error(e); if (satTurno === turno) ley.innerHTML = `<b>${capa.titulo}</b><p class="aviso error">${e.message}</p>`; return; }
+  pintarResumenSat();
+  if (satTurno !== turno || !$("tab-vigor").classList.contains("activa")) return;
+  mostrarCapaSat(r); pintarLeyendaSat(capa, r);
+}
+function pintarLeyendaSat(capa, r) {
+  const p = capa.paleta, v0 = p[0][0], v1 = p[p.length - 1][0], pct = (v) => (((v - v0) / (v1 - v0)) * 100).toFixed(1);
+  const u = capa.unidad ? ` ${capa.unidad}` : "", f = (v) => `${fmt(v, capa.decimales)}${u}`;
+  const marcasTxt = p.map(([v], i) => `<span>${fmt(v, capa.decimales && !capa.unidad ? (Number.isInteger(Math.round(v * 100) / 10) ? 1 : 2) : 0)}${i === p.length - 1 ? u : ""}</span>`).join("");
+  const clases = capa.clases.map(([a, b, txt], i) => {
+    const medio = Math.min(v1, Math.max(v0, Number.isFinite(a) && Number.isFinite(b) ? (a + b) / 2 : Number.isFinite(a) ? (a + v1) / 2 : (v0 + b) / 2));
+    const lim = !Number.isFinite(a) ? `menos de ${fmt(b, capa.decimales)}` : !Number.isFinite(b) ? `más de ${fmt(a, capa.decimales)}` : `${fmt(a, capa.decimales)} a ${fmt(b, capa.decimales)}`;
+    const parte = r.clasesFinca ? `<span>${fmt(r.clasesFinca[i] * 100, 0)} %</span>` : "";
+    return `<li title="${lim}"><i style="background:rgb(${colorDe(p, medio).join(",")})"></i>${txt}${parte}</li>`;
+  }).join("");
+  const enFinca = r.mediaFinca != null ? `En tu finca: <b>${f(r.mediaFinca)}</b> · ${claseDe(capa, r.mediaFinca)}`
+    : "La finca quedó bajo nubes en esta imagen: mira el entorno del círculo.";
+  const cuando = capa.modelo ? `Del ${fechaSat(new Date(new Date(r.fecha) - 30 * 864e5).toISOString().slice(0, 10))} al ${fechaSat(r.fecha)}` : `Imagen del ${fechaSat(r.fecha)}${r.nubes > 0.01 ? ` · ${fmt(r.nubes * 100, 0)} % del círculo bajo nubes (sin color)` : " · sin nubes sobre el círculo"}`;
+  $("leyenda-sat").innerHTML = `<b>${capa.titulo}</b><div class="sat-fecha">${cuando}</div>
+    <div class="barra-color" style="background:linear-gradient(to right,${p.map(([v, c]) => `${c} ${pct(v)}%`).join(",")})"></div>
+    <div class="escala-txt">${marcasTxt}</div>
+    <div class="sat-finca">${enFinca}</div>
+    <ul class="sat-clases">${clases}</ul>
+    ${r.clasesFinca ? '<p class="mini">El porcentaje es la parte de la finca en cada clase.</p>' : ""}
+    <p>${capa.texto}</p>
+    <p class="mini">${capa.fuente}. En el círculo: de ${f(r.min)} a ${f(r.max)}. Herramienta orientativa: confirme en campo.</p>`;
+}
+async function pintarResumenSat() {
+  const filas = [];
+  for (const [k, capa] of Object.entries(CAPAS_SAT)) {
+    if (!satCache[k]?.listo) continue;
+    const r = await satCache[k];
+    if (r.mediaFinca == null) continue;
+    filas.push(`<li><b>${capa.boton}:</b> ${fmt(r.mediaFinca, capa.decimales)}${capa.unidad ? " " + capa.unidad : ""} en la finca · ${claseDe(capa, r.mediaFinca)}</li>`);
+  }
+  $("sat-resumen").innerHTML = filas.join("");
 }
 
 // ===================== Módulo 2: inundación =====================
