@@ -8,7 +8,7 @@ Prototipo funcional del trabajo final de TIG. Una sola finca registrada alimenta
 
 ## Cómo abrirlo
 
-- Doble clic en `index.html` (Chrome o Edge). Necesita internet: descarga el mapa, el relieve y el clima.
+- Doble clic en `index.html` (portada) o directo en `app.html` (Chrome o Edge). Necesita internet: descarga el mapa, el relieve y el clima.
 - Si el navegador bloquea algo al abrirlo como archivo, sirve la carpeta: `python -m http.server 8000` y abre `http://localhost:8000`.
 - Archivos de prueba en `datos/`: la misma finca de ejemplo en shapefile con distintos sistemas de referencia.
 
@@ -16,7 +16,8 @@ Prototipo funcional del trabajo final de TIG. Una sola finca registrada alimenta
 
 | Archivo | Contenido |
 |---|---|
-| `index.html`, `css/estilos.css` | Interfaz |
+| `index.html` | Portada con el video de dron (`video/`) |
+| `app.html`, `css/estilos.css` | Interfaz de la aplicación |
 | `js/geo.js` | Lectura de shapefile/KML/GeoJSON, sistemas de referencia de Colombia, área, perímetro y círculo |
 | `js/hidraulica.js` | Motor hidráulico (Web Worker) |
 | `js/inundacion.js` | Relieve, grilla del modelo, escenarios de lluvia, resultados y dibujo del agua |

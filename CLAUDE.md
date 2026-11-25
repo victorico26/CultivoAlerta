@@ -10,7 +10,7 @@ Prototipo web del trabajo final de TIG (Especialización en Análisis Espacial, 
 
 ## Cómo correrlo
 - Sin compilación: HTML, CSS y JavaScript plano. Librerías por CDN (MapLibre GL 4.7.1, JSZip, proj4).
-- Abrir `index.html` o servir la carpeta: `python -m http.server 8000` → http://localhost:8000
+- `index.html` es la portada (video de dron); la aplicación está en `app.html`. Abrir `index.html` o servir la carpeta: `python -m http.server 8000` → http://localhost:8000
 - Necesita internet: OpenFreeMap (mapa), Esri World Imagery, AWS Terrain Tiles (Terrarium), Open-Meteo, Microsoft Planetary Computer (STAC y recortes de Sentinel-2/Landsat).
 
 ## Estructura

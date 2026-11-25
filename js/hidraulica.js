@@ -155,7 +155,7 @@ function trabajoHidraulico() {
   }
 }
 
-// Crea el Web Worker desde el código de arriba (funciona también abriendo index.html sin servidor)
+// Crea el Web Worker desde el código de arriba (funciona también abriendo app.html sin servidor)
 function crearTrabajadorHidraulico() {
   const blob = new Blob([`(${trabajoHidraulico.toString()})();`], { type: "text/javascript" });
   return new Worker(URL.createObjectURL(blob));
