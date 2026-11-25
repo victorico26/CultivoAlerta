@@ -7,7 +7,7 @@ const VACIO = { type: "FeatureCollection", features: [] };
 const CLAVE_GUARDADO = "cultivoalerta.finca.v1";
 
 let mapa, finca = null, circ = null, terreno = null, modelo = null, clima = null, ultimoArchivo = null;
-let satelite = true, en3d = false, dibujo = null, reproduciendo = null;
+let satelite = true, dibujo = null, reproduciendo = null;
 
 // ===================== Mapa =====================
 mapa = new maplibregl.Map({
@@ -49,13 +49,9 @@ function aplicarBase() {
   $("btn-base").textContent = satelite ? "Satélite" : "Mapa";
   $("btn-base").classList.toggle("activo", satelite);
 }
-$("btn-base").onclick = () => { satelite = !satelite; aplicarBase(); };
-$("btn-3d").onclick = () => {
-  en3d = !en3d;
-  $("btn-3d").classList.toggle("activo", en3d);
-  if (en3d) { mapa.setTerrain({ source: "relieve", exaggeration: 2.5 }); mapa.easeTo({ pitch: 62, bearing: -20, duration: 900 }); }
-  else { mapa.setTerrain(null); mapa.easeTo({ pitch: 0, bearing: 0, duration: 700 }); }
-};
+// Con la maqueta abierta, «Satélite» vuelve al mapa; con el mapa, cambia entre imagen satelital y mapa de calles
+$("btn-base").onclick = () => { if (maqueta || abriendoMaqueta) return cerrarMaquetaUI(); satelite = !satelite; aplicarBase(); };
+$("btn-3d").onclick = () => (maqueta ? cerrarMaquetaUI() : abrirMaquetaUI());
 
 // ===================== Pestañas =====================
 function irA(tab) {
@@ -71,7 +67,7 @@ function irA(tab) {
   else { ocultarCapaSat(); $("leyenda-sat").hidden = true; }
   if (mapa.getLayer("agua-sim")) mapa.setLayoutProperty("agua-sim", "visibility", tab === "vigor" ? "none" : "visible");
   $("leyenda").classList.toggle("oculta-vigor", tab === "vigor");
-  if (tab !== "inundacion") cerrarMaquetaUI();
+  refrescarMaqueta();
   if (tab === "inundacion" && circ) { const c = cajaCirculo(circ.centro, circ.km * 1.15); mapa.fitBounds([[c[0], c[1]], [c[2], c[3]]], { padding: 30, duration: 700 }); }
 }
 document.querySelectorAll(".pestana").forEach((b) => (b.onclick = () => !b.disabled && irA(b.dataset.tab)));
@@ -125,6 +121,7 @@ function establecerFinca(f, encuadrar = true) {
   $("f-origen").textContent = `${p.formato} · ${CRS[p.crs]?.nombre ?? p.crs}${p.crs !== "EPSG:4326" ? " → WGS84" : ""}`;
   actualizarRadio();
   document.querySelectorAll(".pestana").forEach((b) => (b.disabled = false));
+  $("btn-3d").disabled = false;
   if (encuadrar) verFinca();
   try { localStorage.setItem(CLAVE_GUARDADO, JSON.stringify(f)); } catch {}
   terreno = null; clima = null; detenerModelo(); quitarAgua(); cerrarMaquetaUI(); $("resultado").hidden = true; $("leyenda").hidden = true;
@@ -149,6 +146,7 @@ $("btn-borrar").onclick = () => {
   mapa.getSource("finca").setData(VACIO); mapa.getSource("finca-etiqueta").setData(VACIO); mapa.getSource("circulo").setData(VACIO);
   $("info-finca").hidden = true; $("resultado").hidden = true; $("leyenda").hidden = true; avisoFinca("");
   document.querySelectorAll(".pestana").forEach((b) => (b.disabled = b.dataset.tab !== "finca"));
+  $("btn-3d").disabled = true;
   try { localStorage.removeItem(CLAVE_GUARDADO); } catch {}
 };
 $("btn-exportar").onclick = () => {
@@ -181,11 +179,6 @@ mapa.on("dblclick", (e) => { if (dibujo) { e.preventDefault(); terminarDibujo();
 $("btn-fin-dibujo").onclick = terminarDibujo;
 $("btn-cancelar-dibujo").onclick = salirDibujo;
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && dibujo) salirDibujo(); });
-
-// Copiar mensajes
-document.querySelectorAll("[data-copiar]").forEach((b) => (b.onclick = async () => {
-  try { await navigator.clipboard.writeText($(b.dataset.copiar).textContent); b.textContent = "Copiado ✓"; setTimeout(() => (b.textContent = "Copiar mensaje"), 1500); } catch { b.textContent = "No se pudo copiar"; }
-}));
 
 // ===================== Gráficos (SVG) =====================
 const NS = "http://www.w3.org/2000/svg";
@@ -275,21 +268,21 @@ function pintarClima(c) {
   $("clima-alertas").innerHTML = c.alertas.map((x) => `<li class="${x.nivel}"><b>${x.titulo}</b>${x.texto}</li>`).join("");
   graficoTemperatura($("graf-temp"), c.dias);
   graficoLluvia($("graf-lluvia"), c.dias);
-  const fecha = new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
-  const principales = c.alertas.filter((x) => x.nivel !== "ok");
-  $("msg-clima").textContent = `CultivoAlerta · ${finca.properties.nombre}\n${fecha}\n\nAhora: ${a.temperature_2m != null ? fmt(a.temperature_2m) + " °C" : "–"} · suelo ${c.sueloAhora.t0 != null ? fmt(c.sueloAhora.t0) + " °C" : "–"}\nMínima próxima noche: ${Number.isFinite(minProx) ? fmt(minProx) + " °C" : "–"}\nLluvia 30 días: ${fmt(c.lluvia30, 0)} mm (balance ${c.balance30 >= 0 ? "+" : ""}${fmt(c.balance30, 0)} mm)\n\n`
-    + (principales.length ? principales.map((x) => `⚠️ ${x.titulo}: ${x.texto}`).join("\n") : "✅ Sin alertas para los próximos 7 días.");
 }
 
 // ---------- Mapas satelitales del círculo (temperatura, lluvia, NDVI, NDMI) ----------
 let capaSat = "ndvi", satCache = {}, satTurno = 0;
 document.querySelectorAll("#menu-sat button").forEach((b) => (b.onclick = () => elegirCapaSat(b.dataset.capa)));
+// Fecha y hora de paso del satélite (hora de Colombia) y hace cuántos días fue
+const horaSat = (f) => new Date(f).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", timeZone: "America/Bogota" });
+const haceDias = (f) => { const n = Math.round((Date.now() - new Date(f)) / 864e5); return n <= 0 ? "hoy" : n === 1 ? "ayer" : `hace ${n} días`; };
+const fechaCorta = (f) => new Date(f).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Bogota" });
 const fechaSat = (f) => new Date(f.length > 10 ? f : `${f}T12:00:00-05:00`).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Bogota" });
 async function elegirCapaSat(clave) {
   capaSat = clave;
   document.querySelectorAll("#menu-sat button").forEach((b) => b.classList.toggle("activo", b.dataset.capa === clave));
   const turno = ++satTurno;
-  if (!clave || !circ) { ocultarCapaSat(); $("leyenda-sat").hidden = true; return; }
+  if (!clave || !circ) { ocultarCapaSat(); capaMaqueta(null); $("leyenda-sat").hidden = true; return; }
   const ck = `${circ.centro.join()}|${circ.km}|${finca.properties.nombre}`;
   if (satCache.ck !== ck) { satCache = { ck }; $("sat-resumen").innerHTML = ""; }
   const capa = CAPAS_SAT[clave], ley = $("leyenda-sat");
@@ -301,11 +294,11 @@ async function elegirCapaSat(clave) {
       .catch((e) => { delete satCache[clave]; throw e; });
   } else if (!satCache[clave].listo) { ocultarCapaSat(); avance("Cargando…"); }
   let r;
-  try { r = await satCache[clave]; if (satCache[clave]) satCache[clave].listo = true; }
+  try { r = await satCache[clave]; if (satCache[clave]) { satCache[clave].listo = true; satCache[clave].valor = r; } }
   catch (e) { console.error(e); if (satTurno === turno) ley.innerHTML = `<b>${capa.titulo}</b><p class="aviso error">${e.message}</p>`; return; }
   pintarResumenSat();
   if (satTurno !== turno || !$("tab-vigor").classList.contains("activa")) return;
-  mostrarCapaSat(r); pintarLeyendaSat(capa, r);
+  mostrarCapaSat(r); pintarLeyendaSat(capa, r); capaMaqueta(r);
 }
 function pintarLeyendaSat(capa, r) {
   const p = capa.paleta, v0 = p[0][0], v1 = p[p.length - 1][0], pct = (v) => (((v - v0) / (v1 - v0)) * 100).toFixed(1);
@@ -319,8 +312,11 @@ function pintarLeyendaSat(capa, r) {
   }).join("");
   const enFinca = r.mediaFinca != null ? `En tu finca: <b>${f(r.mediaFinca)}</b> · ${claseDe(capa, r.mediaFinca)}`
     : "La finca quedó bajo nubes en esta imagen: mira el entorno del círculo.";
-  const cuando = capa.modelo ? `Del ${fechaSat(new Date(new Date(r.fecha) - 30 * 864e5).toISOString().slice(0, 10))} al ${fechaSat(r.fecha)}` : `Imagen del ${fechaSat(r.fecha)}${r.nubes > 0.01 ? ` · ${fmt(r.nubes * 100, 0)} % del círculo bajo nubes (sin color)` : " · sin nubes sobre el círculo"}`;
-  $("leyenda-sat").innerHTML = `<b>${capa.titulo}</b><div class="sat-fecha">${cuando}</div>
+  const sat = capa.fuente.split(" ·")[0];
+  const cuando = capa.modelo
+    ? `<div class="sat-escena"><span>Período analizado</span><b>${fechaSat(new Date(new Date(r.fecha) - 30 * 864e5).toISOString().slice(0, 10))} al ${fechaSat(r.fecha)}</b><small>Lluvia de modelos del tiempo, no de satélite</small></div>`
+    : `<div class="sat-escena"><span>Escena del satélite usada</span><b>${fechaSat(r.fecha)}, ${horaSat(r.fecha)}</b><small>${sat} · ${haceDias(r.fecha)} · ${r.nubes > 0.01 ? `${fmt(r.nubes * 100, 0)} % del círculo bajo nubes (sin color)` : "sin nubes sobre el círculo"}</small></div>`;
+  $("leyenda-sat").innerHTML = `<b>${capa.titulo}</b>${cuando}
     <div class="barra-color" style="background:linear-gradient(to right,${p.map(([v, c]) => `${c} ${pct(v)}%`).join(",")})"></div>
     <div class="escala-txt">${marcasTxt}</div>
     <div class="sat-finca">${enFinca}</div>
@@ -335,7 +331,8 @@ async function pintarResumenSat() {
     if (!satCache[k]?.listo) continue;
     const r = await satCache[k];
     if (r.mediaFinca == null) continue;
-    filas.push(`<li><b>${capa.boton}:</b> ${fmt(r.mediaFinca, capa.decimales)}${capa.unidad ? " " + capa.unidad : ""} en la finca · ${claseDe(capa, r.mediaFinca)}</li>`);
+    const fecha = capa.modelo ? "últimos 30 días" : `escena del ${fechaCorta(r.fecha)}`;
+    filas.push(`<li><b>${capa.boton}:</b> ${fmt(r.mediaFinca, capa.decimales)}${capa.unidad ? " " + capa.unidad : ""} en la finca · ${claseDe(capa, r.mediaFinca)}<small>${fecha}</small></li>`);
   }
   $("sat-resumen").innerHTML = filas.join("");
 }
@@ -394,16 +391,14 @@ function mostrarResultado(M) {
     kpi("Tiempo con agua", `${R.horasAgua} h`, "Horas con más del 5 % de la finca inundado"),
     kpi("Círculo con agua (pico)", `${fmt(R.pctCirculoPico, 0)} %`, `Radio de ${fmt(circ.km, 2)} km alrededor`),
   ].join("");
-  if (maqueta && maqueta.d !== M.d) cerrarMaquetaUI();   // otro terreno: la maqueta vieja ya no sirve
+  if (maqueta && maqueta.d !== M.d) { cerrarMaquetaUI(); abrirMaquetaUI(); }   // otro terreno: se rehace la maqueta
   const h = $("hora"); h.max = M.stats.length - 1; M.hora = R.pico;
   $("ver-max").checked = false;
   irAHora(R.pico);
   const reco = { alta: "Saque animales, maquinaria e insumos de los bajos; limpie zanjas y drenajes; si puede, adelante la cosecha de los lotes bajos.",
     media: "Limpie zanjas y drenajes y evite dejar maquinaria o insumos en los bajos señalados.",
     baja: "Riesgo bajo: revise que los drenajes de los bajos estén despejados.", sin: "Sin acciones necesarias con este escenario." };
-  $("msg-sim").textContent = `CultivoAlerta · Amenaza de inundación\nFinca: ${p.nombre} (${fmt(p.areaHa, 1)} ha)\nEscenario: ${esc.titulo} (${fmt(total, 0)} mm${fechas})${M.par.crecida ? `, río ${fmt(M.par.crecida, 2)} m arriba` : ""}\n\n`
-    + (R.nivel === "sin" ? "Con este escenario su finca no tendría zonas con más de 10 cm de agua.\n" : `${fmt(R.haPico, 2)} ha (${fmt(R.pctPico, 0)} %) de su finca quedarían con más de 10 cm de agua, hasta ${fmt(R.maxProf, 2)} m en la parte más baja. El agua duraría unas ${R.horasAgua} horas.\n`)
-    + `\nRecomendación: ${reco[R.nivel]}`;
+  $("res-reco").textContent = reco[R.nivel];
   const cu = M.cuenta, ll = cu.lluvia || 1;
   $("res-datos").textContent = `Grilla de ${M.d.nx} × ${M.d.ny} celdas de ${fmt(M.d.dx, 0)} m · relieve SRTM ~30 m · ${M.d.resumen.hayRio ? "río del mapa dentro del círculo" : "sin río del mapa en el círculo"} · suelo ${M.par.suelo.nombre.toLowerCase()} · humedad inicial ${fmt((M.par.theta0 / M.par.suelo.thetaS) * 100, 0)} % de saturación. `
     + `Balance del agua de lluvia: ${fmt((100 * cu.infiltrada) / ll, 0)} % se infiltró, ${fmt((100 * cu.evaporada) / ll, 0)} % se evaporó, ${fmt((100 * Math.max(0, cu.salida)) / ll, 0)} % salió del área y ${fmt((100 * cu.superficie) / ll, 0)} % quedó en superficie. Fuente de la lluvia: ${esc.fuente}.`;
@@ -416,24 +411,53 @@ async function irAHora(k) {
   $("hora-txt").textContent = verMax ? "Máximo alcanzado" : `${cuando} · ${fmt(st.haFinca, 2)} ha`;
   graficoSimulacion($("graf-sim"), modelo, k);
   await dibujarAgua(modelo, k, verMax);
-  if (maqueta) actualizarMaqueta(modelo, k, verMax);
+  if (maqueta && document.querySelector(".pestana.activa")?.dataset.tab === "inundacion") aguaMaqueta(modelo, k, verMax);
 }
 
-// ---------- Maqueta 3D del círculo ----------
-$("btn-maqueta").onclick = async () => {
-  if (maqueta) return cerrarMaquetaUI();
-  if (!modelo?.d) return;
-  const btn = $("btn-maqueta"); btn.disabled = true;
+// ---------- Maqueta 3D del círculo (botón «Maqueta 3D» del mapa, en los tres módulos) ----------
+let abriendoMaqueta = 0;
+async function abrirMaquetaUI() {
+  if (!finca || maqueta || abriendoMaqueta) return;
+  const turno = (abriendoMaqueta = Date.now()), estado = $("estado-mapa");
+  $("btn-3d").classList.add("activo"); $("btn-base").classList.remove("activo");
+  const avance = (t) => { if (abriendoMaqueta === turno) { estado.hidden = false; estado.textContent = t; } };
   try {
-    const M = await crearMaqueta(modelo.d, document.querySelector(".mapa-cont"), finca, (t) => (btn.textContent = t));
-    M.capa.querySelector(".maqueta-cerrar").onclick = cerrarMaquetaUI;
+    const clave = `${circ.centro.join()}|${circ.km}`;
+    if (!terreno || terreno.clave !== clave) {   // el relieve del círculo (el mismo que usa el simulador)
+      avance("Descargando el relieve del círculo…");
+      const t = await prepararTerreno(finca, circ, avance);
+      t.clave = clave;
+      if (abriendoMaqueta !== turno) return;
+      terreno = t;
+    }
+    const M = await crearMaqueta(modelo?.d ?? terreno, document.querySelector(".mapa-cont"), finca, avance);
+    if (abriendoMaqueta !== turno) { cerrarMaqueta(); return; }
+    abriendoMaqueta = 0; estado.hidden = true;
     M.redimensionar();
-    actualizarMaqueta(modelo, modelo.hora ?? 0, $("ver-max").checked);
-    btn.textContent = "Volver al mapa";
-  } catch (e) { console.error(e); cerrarMaquetaUI(); avisoSim(`No se pudo armar la maqueta 3D: ${e.message}`, true); }
-  btn.disabled = false;
-};
-function cerrarMaquetaUI() { cerrarMaqueta(); $("btn-maqueta").textContent = "Ver maqueta 3D del círculo"; }
+    refrescarMaqueta();
+  } catch (e) {
+    console.error(e);
+    if (abriendoMaqueta !== turno) return;
+    cerrarMaquetaUI();
+    estado.hidden = false; estado.textContent = `No se pudo armar la maqueta 3D: ${e.message}`;
+    setTimeout(() => (estado.hidden = true), 6000);
+  }
+}
+function cerrarMaquetaUI() {
+  abriendoMaqueta = 0; cerrarMaqueta();
+  $("btn-3d").classList.remove("activo"); aplicarBase();
+  $("estado-mapa").hidden = true;
+}
+// Lo que muestra la maqueta según el módulo: la finca sola, la capa satelital elegida o el agua de la simulación
+function refrescarMaqueta() {
+  if (!maqueta) return;
+  const tab = document.querySelector(".pestana.activa")?.dataset.tab;
+  const base = "Arrastra para girar · rueda o pellizco para acercar";
+  if (tab === "inundacion" && modelo?.stats?.length && modelo.d === maqueta.d) aguaMaqueta(modelo, modelo.hora ?? 0, $("ver-max").checked);
+  else aguaMaqueta(null);
+  capaMaqueta(tab === "vigor" && capaSat && satCache[capaSat]?.listo ? satCache[capaSat].valor : null);
+  ayudaMaqueta(tab === "vigor" ? `${base} · cambia la capa en el menú` : tab === "inundacion" ? `${base} · ▶ en el panel para ver subir el agua` : base);
+}
 $("hora").oninput = () => { pararReproduccion(); $("ver-max").checked = false; irAHora(+$("hora").value); };
 $("ver-max").onchange = () => irAHora(modelo?.hora ?? 0);
 function pararReproduccion() { if (reproduciendo) { clearInterval(reproduciendo); reproduciendo = null; } $("btn-play").textContent = "▶"; }

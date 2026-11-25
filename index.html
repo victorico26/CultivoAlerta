@@ -76,17 +76,16 @@
         <h3>Alertas de los próximos 7 días</h3>
         <ul class="alertas" id="clima-alertas"></ul>
         <h3>Temperatura mínima y máxima</h3>
+        <p class="lectura">Cada punto de las líneas es un día. La <b class="t-max">línea roja</b> es lo más caliente del día y la <b class="t-min">azul</b>, lo más frío de la madrugada; la franja amarilla entre las dos muestra cuánto cambia la temperatura en el día. La <b class="t-suelo">línea morada punteada</b> es la mínima en la superficie del suelo, que baja más que el aire: ahí se forma primero la helada. Si la línea azul o la morada tocan las rayas de <b>3 °C</b> o <b>0 °C</b>, hay riesgo de helada esa noche. A la derecha de la línea verde vertical (hoy), la parte sombreada es pronóstico.</p>
         <div class="grafico" id="graf-temp"></div>
         <h3>Lluvia y evapotranspiración diarias</h3>
+        <p class="lectura">Cada barra es la <b class="t-lluvia">lluvia de un día</b> en milímetros; las barras claras son la lluvia pronosticada. La <b class="t-et">línea naranja</b> es la evapotranspiración: el agua que el suelo y el cultivo pierden ese día por el sol y el viento. Cuando por muchos días las barras quedan por debajo de la línea naranja, el suelo se va secando y el cultivo puede necesitar riego; cuando las barras la superan con frecuencia, sobra agua y conviene revisar drenajes. 1 mm de lluvia equivale a 1 litro de agua por metro cuadrado.</p>
         <div class="grafico" id="graf-lluvia"></div>
-        <h3>Mensaje que recibiría el agricultor</h3>
-        <div class="whatsapp" id="msg-clima"></div>
-        <button class="sec" data-copiar="msg-clima">Copiar mensaje</button>
         <div class="tarjeta nota">
           <b>Mapas satelitales de tu finca</b>
           <p>Elige en el menú del mapa la capa que quieres ver: temperatura de la superficie, lluvia del último mes, vigor de las plantas (NDVI) o agua en las hojas (NDMI). Cada mapa se recorta al círculo de análisis y trae su leyenda y una explicación corta.</p>
           <ul class="sat-resumen" id="sat-resumen"></ul>
-          <p class="mini">Imágenes de Sentinel‑2 y Landsat 8/9 desde el catálogo público de Microsoft Planetary Computer: se usa la fecha más reciente con el círculo despejado de nubes. Al servidor solo viaja la caja del círculo, no el lindero. Las series de tiempo y la anomalía de NDVI siguen en <code>gee/cultivoalerta_vigor_temperatura.js</code>.</p>
+          <p class="mini">Imágenes de Sentinel‑2 y Landsat 8/9 desde el catálogo público de Microsoft Planetary Computer: cada vez que abres una capa se busca la imagen más reciente que deje ver la finca sin nubes (Sentinel‑2 pasa cada ~5 días y Landsat cada ~8; con muchas nubes puede tocar una imagen de días o semanas atrás). Al servidor solo viaja la caja del círculo, no el lindero. Las series de tiempo y la anomalía de NDVI siguen en <code>gee/cultivoalerta_vigor_temperatura.js</code>.</p>
         </div>
       </div>
     </section>
@@ -147,11 +146,9 @@
           <span id="hora-txt"></span>
         </div>
         <label class="opcion"><input type="checkbox" id="ver-max"> Ver la profundidad máxima alcanzada</label>
-        <button class="sec ancho" id="btn-maqueta">Ver maqueta 3D del círculo</button>
-        <p class="mini">La maqueta muestra el círculo recortado como un bloque de tierra, con la imagen satelital y el agua de cada hora. Adaptada, con permiso, de la maqueta de Diamela Dego.</p>
-        <h3>Mensaje que recibiría el agricultor</h3>
-        <div class="whatsapp" id="msg-sim"></div>
-        <button class="sec" data-copiar="msg-sim">Copiar mensaje</button>
+        <p class="mini">Con el botón «Maqueta 3D» del mapa ves el círculo como un bloque de tierra, con la imagen satelital y el agua de cada hora.</p>
+        <h3>Qué hacer</h3>
+        <p class="recomendacion" id="res-reco"></p>
         <p class="mini" id="res-datos"></p>
       </div>
     </section>
@@ -164,8 +161,9 @@
     <div id="mapa"></div>
     <div class="controles-mapa">
       <button id="btn-base" class="chip activo">Satélite</button>
-      <button id="btn-3d" class="chip">Vista 3D</button>
+      <button id="btn-3d" class="chip" disabled title="Registra la finca para ver la maqueta">Maqueta 3D</button>
     </div>
+    <div class="estado-mapa" id="estado-mapa" hidden></div>
     <div class="menu-sat" id="menu-sat" hidden>
       <b>Capa del mapa</b>
       <div class="menu-sat-botones">
