@@ -89,7 +89,10 @@ button.redondo { width: 38px; height: 38px; padding: 0; border-radius: 50%; }
 .creditos a { color: var(--verde-2); }
 .mapa-cont { position: relative; flex: 1; }
 #mapa { position: absolute; inset: 0; }
-.controles-mapa { position: absolute; top: 12px; left: 12px; display: flex; gap: 6px; }
+.controles-mapa { position: absolute; top: 12px; left: 12px; display: flex; gap: 6px; z-index: 3; }
+.chip:disabled { opacity: 0.5; cursor: not-allowed; }
+.estado-mapa { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 4; background: #fff; padding: 8px 14px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 13px; color: var(--tinta-2); }
+.estado-mapa[hidden] { display: none; }
 .chip { background: #fff; border: 1px solid var(--linea); padding: 7px 12px; border-radius: 20px; cursor: pointer; font-weight: 600; color: var(--tinta-2); box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
 .chip.activo { background: var(--verde); color: #fff; border-color: var(--verde); }
 .dibujo-barra { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: #fff; padding: 8px 10px 8px 14px; border-radius: 10px; display: flex; gap: 8px; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 13px; }
@@ -99,7 +102,7 @@ button.redondo { width: 38px; height: 38px; padding: 0; border-radius: 50%; }
 .escala-txt { display: flex; justify-content: space-between; font-size: 10px; color: var(--tinta-2); margin-top: 2px; }
 .leyenda.oculta-vigor { display: none; }
 .ley-fila { margin-top: 8px; display: flex; align-items: center; gap: 5px; color: var(--tinta-2); }
-.menu-sat { position: absolute; top: 56px; left: 12px; background: rgba(255,255,255,0.96); padding: 8px 10px 9px; border-radius: 10px; box-shadow: 0 1px 6px rgba(0,0,0,0.15); font-size: 12px; }
+.menu-sat { z-index: 3; position: absolute; top: 56px; left: 12px; background: rgba(255,255,255,0.96); padding: 8px 10px 9px; border-radius: 10px; box-shadow: 0 1px 6px rgba(0,0,0,0.15); font-size: 12px; }
 .menu-sat[hidden], .leyenda-sat[hidden] { display: none; }
 .menu-sat b { display: block; color: var(--tinta-2); font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
 .menu-sat-botones { display: flex; flex-wrap: wrap; gap: 4px; max-width: 300px; }
@@ -107,7 +110,11 @@ button.redondo { width: 38px; height: 38px; padding: 0; border-radius: 50%; }
 .menu-sat-botones button:hover { background: var(--verde-claro); }
 .menu-sat-botones button.activo { background: var(--verde); border-color: var(--verde); color: #fff; }
 .leyenda-sat { width: 300px; max-height: calc(100% - 190px); overflow-y: auto; line-height: 1.4; }
-.leyenda-sat .sat-fecha { color: var(--tinta-2); font-size: 11px; margin-top: 2px; }
+.sat-escena { margin-top: 6px; padding: 6px 8px; border-left: 3px solid var(--verde-2); background: var(--verde-claro); border-radius: 0 6px 6px 0; }
+.sat-escena span { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--tinta-2); }
+.sat-escena b { display: block; font-size: 13px; color: var(--verde); }
+.sat-escena small { display: block; font-size: 11px; color: var(--tinta-2); }
+.sat-resumen small { display: block; font-size: 11px; color: var(--tinta-2); }
 .leyenda-sat .barra-color { height: 10px; border-radius: 3px; margin-top: 8px; }
 .leyenda-sat .sat-finca { margin-top: 8px; padding: 6px 8px; background: var(--fondo); border-radius: 6px; }
 .leyenda-sat .sat-finca b { font-size: 15px; }
@@ -124,8 +131,7 @@ button.redondo { width: 38px; height: 38px; padding: 0; border-radius: 50%; }
 .maqueta { position: absolute; inset: 0; z-index: 2; background: radial-gradient(ellipse at 50% 40%, #f4f1ea 0%, #e3ded2 70%, #cfc8b9 100%); cursor: grab; }
 .maqueta:active { cursor: grabbing; }
 .maqueta canvas { display: block; width: 100%; height: 100%; }
-.maqueta-cerrar { position: absolute; top: 12px; left: 12px; }
-.maqueta-relieve { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.9); padding: 4px 6px 4px 10px; border-radius: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.12); font-size: 12px; color: var(--tinta-2); }
+.maqueta-relieve { position: absolute; bottom: 44px; right: 12px; display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.9); padding: 4px 6px 4px 10px; border-radius: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.12); font-size: 12px; color: var(--tinta-2); }
 .maqueta-relieve .chip { padding: 4px 9px; box-shadow: none; }
 .maqueta-ayuda { position: absolute; right: 12px; top: 12px; margin: 0; max-width: 260px; padding: 5px 10px; border-radius: 8px; background: rgba(255,255,255,0.92); color: var(--tinta-2); font-size: 12px; pointer-events: none; }
 .maqueta-credito { position: absolute; right: 12px; bottom: 8px; margin: 0; max-width: 45%; text-align: right; font-size: 11px; color: var(--tinta-2); background: rgba(255,255,255,0.8); padding: 3px 8px; border-radius: 6px; }

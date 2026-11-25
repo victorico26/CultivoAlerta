@@ -97,9 +97,10 @@ async function crearMaqueta(d, cont, finca, avance = () => {}) {
   const S = 2 ** Math.max(0, Math.min(18 - d.zoom, Math.floor(Math.log2((innerWidth < 700 ? 1536 : 2048) / Math.max(bw, bh)))));
   avance("Descargando la imagen satelital de la maqueta…");
   const sat = await sateliteCaja(d.zoom, d.gx0 + x0, d.gy0 + y0, bw, bh, S);
-  // Lindero de la finca sobre la imagen (amarillo, como en el mapa)
+  // Lindero de la finca (amarillo, como en el mapa) en un lienzo aparte: va encima de las capas y del agua
+  const lindero = Object.assign(document.createElement("canvas"), { width: sat.width, height: sat.height });
   {
-    const c = sat.getContext("2d"), aT = ([lo, la]) => [((xDeLon(lo, d.zoom)) * 256 - d.gx0 - x0) * S, ((yDeLat(la, d.zoom)) * 256 - d.gy0 - y0) * S];
+    const c = lindero.getContext("2d"), aT = ([lo, la]) => [(xDeLon(lo, d.zoom) * 256 - d.gx0 - x0) * S, (yDeLat(la, d.zoom) * 256 - d.gy0 - y0) * S];
     const pols = finca.geometry.type === "Polygon" ? [finca.geometry.coordinates] : finca.geometry.coordinates;
     c.lineJoin = "round";
     for (const [w, col] of [[Math.max(4, S * 1.6), "rgba(43,33,0,0.75)"], [Math.max(2, S * 0.8), "#f2b705"]]) {
@@ -111,9 +112,8 @@ async function crearMaqueta(d, cont, finca, avance = () => {}) {
 
   const capa = document.createElement("div");
   capa.className = "maqueta";
-  capa.innerHTML = `<button class="chip maqueta-cerrar" type="button">← Volver al mapa</button>
-    <div class="maqueta-relieve"><span>Relieve</span><button class="chip" data-ex="1">× 1</button><button class="chip" data-ex="3">× 3</button><button class="chip" data-ex="6">× 6</button></div>
-    <p class="maqueta-ayuda">Arrastra para girar · rueda o pellizco para acercar · ▶ en el panel para ver subir el agua</p>
+  capa.innerHTML = `<div class="maqueta-relieve"><span>Relieve</span><button class="chip" data-ex="1">× 1</button><button class="chip" data-ex="3">× 3</button><button class="chip" data-ex="6">× 6</button></div>
+    <p class="maqueta-ayuda">Arrastra para girar · rueda o pellizco para acercar</p>
     <p class="maqueta-credito">Maqueta adaptada, con permiso, del observatorio de <a href="https://github.com/diamedego/Mapa-de-riesgo-super-ni-o" target="_blank" rel="noopener">Diamela Dego</a> · Imagen: Esri World Imagery</p>`;
   cont.appendChild(capa);
   const ren = crearRenderer();
@@ -174,8 +174,8 @@ async function crearMaqueta(d, cont, finca, avance = () => {}) {
   let hMin = Infinity, hMax = -Infinity;
   for (const i of pix) { hMin = Math.min(hMin, d.zFino[i]); hMax = Math.max(hMax, d.zFino[i]); }
 
-  const M = { d, capa, ren, escena, cam, geo, pared, sombra, tex, textura, sat, pix, borde, terron, R: R * m, x0, y0, bw, bh, S, hMin, hMax,
-    ex: 3, azimut: 0.6, elevacion: 0.42, distancia: 0.8, dibujar: 0, prof: null, agua: null };
+  const M = { d, capa, ren, escena, cam, geo, pared, sombra, tex, textura, sat, lindero, pix, borde, terron, R: R * m, x0, y0, bw, bh, S, hMin, hMax,
+    ex: 3, azimut: 0.6, elevacion: 0.42, distancia: 0.8, dibujar: 0, prof: null, agua: null, capaExtra: null };
 
   // Norte, sur, este y oeste alrededor del círculo (el norte es −z y el este +x, como en la imagen)
   const card = new THREE.Group(); escena.add(card); M.cardinales = card;
@@ -266,22 +266,37 @@ function alturasMaqueta(M) {
   M.cardinales.position.y = 0;
 }
 
-// Textura: imagen satelital + agua del modelo (mismos colores que el mapa)
+// Textura: imagen satelital → capa del módulo 1 (NDVI, etc.) → agua del modelo → lindero
 function texturaMaqueta(M) {
-  const ct = M.textura.getContext("2d");
+  const ct = M.textura.getContext("2d"), d = M.d;
   ct.drawImage(M.sat, 0, 0);
-  if (M.agua) { ct.imageSmoothingEnabled = true; ct.drawImage(M.agua, M.x0, M.y0, M.bw, M.bh, 0, 0, M.bw * M.S, M.bh * M.S); }
+  ct.imageSmoothingEnabled = true;
+  if (M.capaExtra) {   // imagen en grados (caja del círculo): se ubica por sus esquinas en la textura (Mercator ≈ lineal a esta escala)
+    const [[o, n], , [e, s]] = M.capaExtra.coordenadas, aT = (lo, la) => [(xDeLon(lo, d.zoom) * 256 - d.gx0 - M.x0) * M.S, (yDeLat(la, d.zoom) * 256 - d.gy0 - M.y0) * M.S];
+    const [x0, y0] = aT(o, n), [x1, y1] = aT(e, s);
+    ct.globalAlpha = 0.92; ct.drawImage(M.capaExtra.lienzo, x0, y0, x1 - x0, y1 - y0); ct.globalAlpha = 1;
+  }
+  if (M.agua) ct.drawImage(M.agua, M.x0, M.y0, M.bw, M.bh, 0, 0, M.bw * M.S, M.bh * M.S);
+  ct.drawImage(M.lindero, 0, 0);
   M.tex.needsUpdate = true;
 }
 
-// Llamar con el modelo y la hora para mostrar el agua (o sin modelo para la maqueta seca)
-function actualizarMaqueta(Mod, k, verMax = false) {
+// Agua del modelo a una hora (o sin modelo: maqueta seca)
+function aguaMaqueta(Mod, k, verMax = false) {
   const M = maqueta;
   if (!M) return;
   if (Mod?.frames?.length && Mod.d === M.d) { M.prof = profundidadesFinas(Mod, k, verMax); M.agua = imagenAgua(Mod, k, verMax); }
   else { M.prof = null; M.agua = null; }
   alturasMaqueta(M); texturaMaqueta(M); cuadroMaqueta();
 }
+// Capa satelital del módulo 1 sobre la maqueta ({ lienzo, coordenadas } o null)
+function capaMaqueta(r) {
+  const M = maqueta;
+  if (!M) return;
+  M.capaExtra = r?.lienzo ? r : null;
+  texturaMaqueta(M); cuadroMaqueta();
+}
+function ayudaMaqueta(txt) { maqueta?.capa.querySelector(".maqueta-ayuda") && (maqueta.capa.querySelector(".maqueta-ayuda").textContent = txt); }
 
 function cuadroMaqueta() {
   const M = maqueta;
