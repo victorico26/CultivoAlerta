@@ -9,7 +9,7 @@
 html, body { margin: 0; height: 100%; font-family: Inter, system-ui, sans-serif; color: var(--tinta); background: var(--fondo); font-size: 14px; }
 button, select, input { font: inherit; }
 .barra { height: 58px; display: flex; align-items: center; gap: 24px; padding: 0 18px; background: #fff; border-bottom: 1px solid var(--linea); }
-.marca { display: flex; align-items: center; gap: 10px; min-width: 300px; }
+.marca { text-decoration: none; color: inherit; display: flex; align-items: center; gap: 10px; min-width: 300px; }
 .logo { width: 36px; height: 36px; }
 .marca b { display: block; font-size: 18px; color: var(--verde); letter-spacing: -0.2px; }
 .marca span { font-size: 12px; color: var(--tinta-2); }

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CultivoAlerta · Prototipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+<header class="barra">
+  <a class="marca" href="index.html" title="Volver a la portada">
+    <svg viewBox="0 0 40 40" class="logo" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#1f5130"/><path d="M12 26c0-9 7-15 17-15-1 10-7 16-15 16" fill="#8fd16a"/><path d="M13 28c3-5 7-9 12-12" stroke="#1f5130" stroke-width="1.6" fill="none"/><path d="M27 22c0 0 4 4.5 4 7a4 4 0 0 1-8 0c0-2.5 4-7 4-7z" fill="#5ec8f2"/></svg>
+    <div><b>CultivoAlerta</b><span>Prototipo</span></div>
+  </a>
+  <nav class="pestanas" role="tablist">
+    <button class="pestana activa" data-tab="finca" role="tab">1 · Mi finca</button>
+    <button class="pestana" data-tab="vigor" role="tab" disabled>2 · Vigor y temperatura</button>
+    <button class="pestana" data-tab="inundacion" role="tab" disabled>3 · Amenaza de inundación</button>
+  </nav>
+</header>
+
+<main class="cuerpo">
+  <aside class="panel">
+    <!-- ============ 1. MI FINCA ============ -->
+    <section class="seccion activa" id="tab-finca">
+      <h2>Registra tu finca una sola vez</h2>
+      <p class="ayuda">Carga el lindero de tu finca. Lo usan los dos módulos: el monitoreo del cultivo y la amenaza de inundación. El archivo se lee en tu computador y no se envía a ningún servidor.</p>
+      <label class="zona-carga" id="zona-carga">
+        <input type="file" id="archivo" accept=".zip,.kml,.kmz,.geojson,.json" hidden>
+        <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M12 3v12m0-12 4.5 4.5M12 3 7.5 7.5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+        <b>Arrastra aquí el archivo de tu finca</b>
+        <span>o haz clic para buscarlo · Shapefile en .zip (.shp, .shx, .dbf, .prj), KML/KMZ de Google Earth o GeoJSON</span>
+      </label>
+      <div class="fila">
+        <label for="crs">Sistema de referencia</label>
+        <select id="crs"><option value="auto">Automático (desde el .prj)</option></select>
+      </div>
+      <div class="botones">
+        <button id="btn-dibujar" class="sec">Dibujar en el mapa</button>
+        <button id="btn-ejemplo" class="sec">Usar finca de ejemplo</button>
+      </div>
+      <p class="aviso" id="aviso-finca" hidden></p>
+      <div class="tarjeta" id="info-finca" hidden>
+        <div class="tarjeta-tit"><span class="punto amarillo"></span><b id="f-nombre">Mi finca</b></div>
+        <dl class="datos">
+          <div><dt>Área</dt><dd id="f-area">–</dd></div>
+          <div><dt>Perímetro</dt><dd id="f-perim">–</dd></div>
+          <div><dt>Lotes</dt><dd id="f-lotes">–</dd></div>
+          <div><dt>Centro</dt><dd id="f-centro">–</dd></div>
+        </dl>
+        <p class="mini" id="f-origen"></p>
+        <div class="fila">
+          <label for="margen">Margen del círculo de análisis <b id="margen-v">0,3 km</b></label>
+          <input type="range" id="margen" min="0.1" max="1.5" step="0.1" value="0.3">
+        </div>
+        <p class="mini">El círculo <span class="punto cian"></span> cubre la finca y su entorno: el agua que baja de los terrenos vecinos también llega. Radio: <b id="f-radio">–</b>.</p>
+        <div class="botones">
+          <button id="btn-zoom" class="sec">Ver mi finca</button>
+          <button id="btn-exportar" class="sec">Descargar GeoJSON</button>
+          <button id="btn-borrar" class="sec peligro">Quitar</button>
+        </div>
+        <button class="prim ancho" id="btn-ir-vigor">Siguiente: vigor y temperatura →</button>
+      </div>
+    </section>
+
+    <!-- ============ 2. VIGOR Y TEMPERATURA ============ -->
+    <section class="seccion" id="tab-vigor">
+      <h2>Vigor y temperatura del territorio</h2>
+      <p class="ayuda">Condiciones en el centro de tu finca: temperatura del aire y del suelo, heladas, lluvia y balance de agua. Últimos 31 días y pronóstico de 16 días.</p>
+      <div id="clima-estado" class="estado">Cargando el clima de la finca…</div>
+      <div id="clima-cont" hidden>
+        <div class="kpis" id="clima-kpis"></div>
+        <h3>Alertas de los próximos 7 días</h3>
+        <ul class="alertas" id="clima-alertas"></ul>
+        <h3>Temperatura mínima y máxima</h3>
+        <p class="lectura">Cada punto de las líneas es un día. La <b class="t-max">línea roja</b> es lo más caliente del día y la <b class="t-min">azul</b>, lo más frío de la madrugada; la franja amarilla entre las dos muestra cuánto cambia la temperatura en el día. La <b class="t-suelo">línea morada punteada</b> es la mínima en la superficie del suelo, que baja más que el aire: ahí se forma primero la helada. Si la línea azul o la morada tocan las rayas de <b>3 °C</b> o <b>0 °C</b>, hay riesgo de helada esa noche. A la derecha de la línea verde vertical (hoy), la parte sombreada es pronóstico.</p>
+        <div class="grafico" id="graf-temp"></div>
+        <h3>Lluvia y evapotranspiración diarias</h3>
+        <p class="lectura">Cada barra es la <b class="t-lluvia">lluvia de un día</b> en milímetros; las barras claras son la lluvia pronosticada. La <b class="t-et">línea naranja</b> es la evapotranspiración: el agua que el suelo y el cultivo pierden ese día por el sol y el viento. Cuando por muchos días las barras quedan por debajo de la línea naranja, el suelo se va secando y el cultivo puede necesitar riego; cuando las barras la superan con frecuencia, sobra agua y conviene revisar drenajes. 1 mm de lluvia equivale a 1 litro de agua por metro cuadrado.</p>
+        <div class="grafico" id="graf-lluvia"></div>
+        <div class="tarjeta nota">
+          <b>Mapas satelitales de tu finca</b>
+          <p>Elige en el menú del mapa la capa que quieres ver: temperatura de la superficie, lluvia del último mes, vigor de las plantas (NDVI) o agua en las hojas (NDMI). Cada mapa se recorta al círculo de análisis y trae su leyenda y una explicación corta.</p>
+          <ul class="sat-resumen" id="sat-resumen"></ul>
+          <p class="mini">Imágenes de Sentinel‑2 y Landsat 8/9 desde el catálogo público de Microsoft Planetary Computer: cada vez que abres una capa se busca la imagen más reciente que deje ver la finca sin nubes (Sentinel‑2 pasa cada ~5 días y Landsat cada ~8; con muchas nubes puede tocar una imagen de días o semanas atrás). Al servidor solo viaja la caja del círculo, no el lindero. Las series de tiempo y la anomalía de NDVI siguen en <code>gee/cultivoalerta_vigor_temperatura.js</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3. INUNDACIÓN ============ -->
+    <section class="seccion" id="tab-inundacion">
+      <h2>Simulador de inundación sobre tu finca</h2>
+      <p class="ayuda">Modelo hidráulico 2D sobre el relieve real del círculo: la lluvia se infiltra según el suelo, escurre por las pendientes y se junta en los bajos.</p>
+      <fieldset class="grupo">
+        <legend>Escenario de lluvia</legend>
+        <label class="opcion"><input type="radio" name="esc" value="pronostico" checked> Pronóstico de los próximos 16 días</label>
+        <label class="opcion"><input type="radio" name="esc" value="personalizada"> Tormenta personalizada</label>
+        <div class="sub" data-para="personalizada" hidden>
+          <label for="mm">Lluvia total <b id="mm-v">80 mm</b></label>
+          <input type="range" id="mm" min="10" max="250" step="5" value="80">
+          <label for="horas">Duración <b id="horas-v">12 h</b></label>
+          <input type="range" id="horas" min="1" max="72" step="1" value="12">
+        </div>
+        <div class="tabla-nina">
+          <b>Lluvia en tu finca durante las temporadas La Niña</b>
+          <p class="mini">Para tener una referencia de cuánto puede llover. Con «Probar» se carga la peor racha de 3 días de esa temporada como tormenta personalizada.</p>
+          <div id="tabla-nina"><p class="mini">Cargando la lluvia de esas temporadas…</p></div>
+          <p class="mini">Datos ERA5 (Open-Meteo) en el centro de la finca. ERA5 promedia la lluvia en celdas de ~10 a 25 km, así que las tormentas locales pueden haber sido más fuertes.</p>
+        </div>
+      </fieldset>
+      <fieldset class="grupo">
+        <legend>Condiciones del terreno</legend>
+        <div class="fila">
+          <label for="suelo">Suelo</label>
+          <select id="suelo"></select>
+        </div>
+        <div class="fila">
+          <label for="humedad">Humedad del suelo al empezar</label>
+          <select id="humedad">
+            <option value="datos">Según los datos del escenario</option>
+            <option value="0.5">Seco</option>
+            <option value="0.7">Normal</option>
+            <option value="0.85">Húmedo</option>
+            <option value="1">Saturado (después de semanas de lluvia)</option>
+          </select>
+        </div>
+      </fieldset>
+      <button class="prim ancho" id="btn-simular">Simular inundación</button>
+      <div class="progreso" id="progreso" hidden><div class="barra-prog"><i id="prog-barra"></i></div><span id="prog-txt"></span></div>
+      <p class="aviso" id="aviso-sim" hidden></p>
+      <div id="resultado" hidden>
+        <div class="nivel" id="res-nivel"></div>
+        <div class="kpis" id="res-kpis"></div>
+        <h3>Lluvia y agua en la finca, hora por hora</h3>
+        <p class="lectura">Se lee de izquierda a derecha, una columna por hora. Las <b class="t-lluvia">barras celestes</b> cuelgan desde arriba y muestran cuánta lluvia cae en cada hora (milímetros por hora, escala de la derecha). La <b class="t-agua">zona azul oscura</b> que sube desde abajo es la parte de tu finca con más de 10 cm de agua, en hectáreas (escala de la izquierda). Fíjate en que el agua suele seguir subiendo un rato después de que para la lluvia, porque baja de los terrenos vecinos, y luego tarda en irse. La <b>línea verde</b> marca la hora que se ve en el mapa; haz clic en el gráfico para ver otra hora.</p>
+        <div class="grafico" id="graf-sim"></div>
+        <div class="linea-tiempo">
+          <button id="btn-play" class="sec redondo" aria-label="Reproducir">▶</button>
+          <input type="range" id="hora" min="0" max="0" value="0">
+          <span id="hora-txt"></span>
+        </div>
+        <label class="opcion"><input type="checkbox" id="ver-max"> Ver la profundidad máxima alcanzada</label>
+        <p class="mini">Con el botón «Maqueta 3D» del mapa ves el círculo como un bloque de tierra, con la imagen satelital y el agua de cada hora.</p>
+        <h3>Qué hacer</h3>
+        <p class="recomendacion" id="res-reco"></p>
+        <p class="mini" id="res-datos"></p>
+      </div>
+    </section>
+    <footer class="creditos">
+      Relieve: AWS Terrain Tiles (SRTM). Mapa: © OpenStreetMap, OpenFreeMap. Imagen: Esri World Imagery. Clima: Open-Meteo (ERA5, pronósticos). Sentinel‑2 y Landsat: Copernicus/ESA, USGS/NASA vía Microsoft Planetary Computer. Motor hidráulico y maqueta 3D adaptados, con permiso, del observatorio de <a href="https://github.com/diamedego/Mapa-de-riesgo-super-ni-o" target="_blank" rel="noopener">Diamela Dego</a>. Herramienta orientativa: ante una emergencia siga las indicaciones de la UNGRD, el IDEAM y la CAR.
+    </footer>
+  </aside>
+
+  <div class="mapa-cont">
+    <div id="mapa"></div>
+    <div class="controles-mapa">
+      <button id="btn-base" class="chip activo">Satélite</button>
+      <button id="btn-3d" class="chip" disabled title="Registra la finca para ver la maqueta">Maqueta 3D</button>
+    </div>
+    <div class="estado-mapa" id="estado-mapa" hidden></div>
+    <div class="menu-sat" id="menu-sat" hidden>
+      <b>Capa del mapa</b>
+      <div class="menu-sat-botones">
+        <button data-capa="temperatura">Temperatura</button><button data-capa="lluvia">Lluvia</button><button data-capa="ndvi">NDVI</button><button data-capa="ndmi">NDMI</button><button data-capa="">Ninguna</button>
+      </div>
+    </div>
+    <div class="leyenda leyenda-sat" id="leyenda-sat" hidden></div>
+    <div class="dibujo-barra" id="dibujo-barra" hidden>
+      <span>Haz clic para marcar las esquinas de la finca · doble clic para terminar</span>
+      <button id="btn-fin-dibujo" class="prim">Terminar</button><button id="btn-cancelar-dibujo" class="sec">Cancelar</button>
+    </div>
+    <div class="leyenda" id="leyenda" hidden>
+      <b>Profundidad del agua</b>
+      <div class="escala"><i style="background:#e1f0f8"></i><i style="background:#8cc4ec"></i><i style="background:#408cd6"></i><i style="background:#2458b2"></i><i style="background:#223484"></i><i style="background:#1a1d52"></i></div>
+      <div class="escala-txt"><span>3 cm</span><span>10</span><span>30</span><span>60 cm</span><span>1</span><span>2 m</span></div>
+      <div class="ley-fila"><span class="punto amarillo"></span> Lindero de la finca <span class="punto cian"></span> Círculo de análisis</div>
+    </div>
+  </div>
+</main>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/proj4@2.11.0/dist/proj4.js"></script>
+<script src="js/geo.js"></script>
+<script src="js/hidraulica.js"></script>
+<script src="js/inundacion.js"></script>
+<script src="js/maqueta.js"></script>
+<script src="js/clima.js"></script>
+<script src="js/satelite.js"></script>
+<script src="js/finca_ejemplo.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
