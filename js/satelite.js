@@ -119,24 +119,33 @@ async function capaSatelital(clave, centro, km, finca, avance) {
   avance?.("Buscando imágenes recientes del satélite…");
   const escenas = await buscarEscenas(capa, caja);
   if (!escenas.length) throw new Error(`No hay imágenes de ${capa.fuente.split(" ·")[0]} de los últimos ${capa.dias} días sobre la finca.`);
-  // Revisa las nubes sobre el círculo en versión pequeña (48 px), de 4 en 4, y se queda con la más reciente despejada
-  const chica = 48, gChica = geometriaPixeles(caja, chica, chica, centro, km, null);
+  // Revisa las nubes en versión pequeña (64 px), de 4 en 4 y de la más nueva a la más vieja. Se queda con la escena MÁS RECIENTE
+  // que deje ver la finca (80 % de la finca sin nubes y al menos la mitad del círculo): lo que importa es cómo está hoy.
+  // Si ninguna de las últimas 12 cumple, usa la que mejor deja ver la finca.
+  const chica = 64, gChica = geometriaPixeles(caja, chica, chica, centro, km, finca);
+  const sirve = (es) => (es.nFinca ? es.finca >= 0.8 && es.despejado >= 0.5 : es.despejado >= 0.8);
+  const puntaje = (es) => (es.nFinca ? es.finca + es.despejado * 0.01 : es.despejado);
   let elegida = null;
-  for (let k = 0; k < Math.min(escenas.length, 12) && !(elegida?.despejado >= 0.8); k += 4) {
-    avance?.(`Revisando nubes en las imágenes (${Math.min(k + 4, escenas.length)} de ${Math.min(escenas.length, 12)})…`);
+  for (let k = 0; k < Math.min(escenas.length, 12) && !(elegida && sirve(elegida)); k += 4) {
+    avance?.(`Buscando la imagen más reciente sin nubes sobre la finca (${Math.min(k + 4, escenas.length)} de ${Math.min(escenas.length, 12)})…`);
     const lote = await Promise.all(escenas.slice(k, k + 4).map(async (es) => {
       try {
         const im = await pedirNpy(capa.coleccion, es.id, caja, chica, capa.expr);
-        let tot = 0, ok = 0;
-        for (let i = 0; i < im.val.length; i++) if (gChica.enCirc[i]) { tot++; if (im.val[i] !== SIN_DATO && Number.isFinite(im.val[i])) ok++; }
-        return { ...es, despejado: tot ? ok / tot : 0 };
-      } catch { return { ...es, despejado: -1 }; }
+        let tot = 0, ok = 0, nF = 0, okF = 0;
+        for (let i = 0; i < im.val.length; i++) {
+          if (!gChica.enCirc[i]) continue;
+          const v = im.val[i] !== SIN_DATO && Number.isFinite(im.val[i]);
+          tot++; if (v) ok++;
+          if (gChica.enFinca[i]) { nF++; if (v) okF++; }
+        }
+        return { ...es, despejado: tot ? ok / tot : 0, finca: nF ? okF / nF : 0, nFinca: nF };
+      } catch { return { ...es, despejado: -1, finca: -1, nFinca: 0 }; }
     }));
-    for (const es of lote) if (es.despejado >= 0.8 && !(elegida?.despejado >= 0.8)) elegida = es;   // la más reciente que pase
-    if (!(elegida?.despejado >= 0.8)) for (const es of lote) if (es.despejado > (elegida?.despejado ?? 0)) elegida = es;
+    for (const es of lote) if (sirve(es) && !(elegida && sirve(elegida))) elegida = es;   // la más reciente que sirva
+    if (!(elegida && sirve(elegida))) for (const es of lote) if (puntaje(es) > (elegida ? puntaje(elegida) : 0)) elegida = es;
   }
   if (!elegida || elegida.despejado <= 0.02) throw new Error("Las imágenes recientes están cubiertas de nubes sobre la finca. Intente en unos días.");
-  avance?.("Descargando la imagen de la fecha más despejada…");
+  avance?.("Descargando la imagen más reciente…");
   const px = Math.max(64, Math.min(500, Math.round((2 * km * 1000) / capa.resM)));
   const im = await pedirNpy(capa.coleccion, elegida.id, caja, px, capa.expr);
   return { ...armarImagen(capa, im, caja, centro, km, finca), fecha: elegida.fecha, despejado: elegida.despejado, escena: elegida.id };
