@@ -71,6 +71,14 @@ button.redondo { width: 38px; height: 38px; padding: 0; border-radius: 50%; }
 .grafico text { font-family: Inter, sans-serif; font-size: 10px; fill: var(--tinta-2); }
 .lectura { font-size: 12.5px; line-height: 1.5; color: var(--tinta-2); margin: -2px 0 8px; }
 .lectura .t-max { color: #d0533f; } .lectura .t-min { color: #2b7bba; } .lectura .t-suelo { color: #7b5cc4; } .lectura .t-lluvia { color: #3b8fd0; } .lectura .t-et { color: #c27600; }
+.tabla-nina { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--linea); }
+.tabla-nina > b { font-size: 13px; color: var(--verde); }
+.tabla-nina table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 6px 0; }
+.tabla-nina th { text-align: left; font-weight: 600; color: var(--tinta-2); font-size: 11px; padding: 4px 4px; border-bottom: 1px solid var(--linea); }
+.tabla-nina td { padding: 5px 4px; border-bottom: 1px solid var(--linea); vertical-align: top; font-variant-numeric: tabular-nums; }
+.tabla-nina td small { display: block; color: var(--tinta-2); font-size: 10.5px; }
+button.mini-btn { padding: 3px 8px; font-size: 11px; }
+.lectura .t-agua { color: #2458b2; }
 .recomendacion { margin: 0 0 8px; padding: 9px 11px; background: var(--fondo); border-radius: 8px; line-height: 1.45; }
 .grupo { border: 1px solid var(--linea); border-radius: var(--radio); padding: 10px 14px 12px; margin: 0 0 12px; }
 .grupo legend { font-weight: 600; padding: 0 6px; color: var(--verde); }
