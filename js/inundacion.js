@@ -20,7 +20,7 @@ const TEXTURAS = {   // Green-Ampt (Rawls, Brakensiek y Miller 1983): conductivi
   "arcilloso limoso": { ks: 0.5, psi: 292.2, thetaS: 0.479, nombre: "Arcilloso limoso" },
   arcilloso: { ks: 0.3, psi: 316.3, thetaS: 0.475, nombre: "Arcilloso" },
 };
-// Temporadas La Niña (ONI de NOAA) con lluvias fuertes en Colombia; se busca la peor tormenta de 72 h en cada una
+// Temporadas La Niña (ONI de NOAA) con lluvias fuertes en Colombia: la tabla de referencia del simulador
 const NINAS = {
   "2010-11": { nombre: "La Niña 2010-2011 (fuerte)", desde: "2010-06-01", hasta: "2011-06-30" },
   "2021-22": { nombre: "La Niña 2021-2022", desde: "2021-09-01", hasta: "2022-12-31" },
@@ -207,21 +207,16 @@ async function pedirJson(u, intentos = 2) {
 const aMs = (t) => Date.parse(`${t}:00-05:00`);
 
 // La peor tormenta de 72 h de una temporada La Niña en el punto (ERA5 de Open-Meteo, hora por hora)
-async function lluviaNina(punto, clave) {
-  const T = NINAS[clave], [lon, lat] = punto.map((v) => v.toFixed(3));
-  const d = await pedirJson(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${T.desde}&end_date=${T.hasta}&hourly=precipitation,et0_fao_evapotranspiration,soil_moisture_0_to_7cm${ZONA_BOG}`);
-  const p = d.hourly.precipitation.map((v) => v ?? 0), W = 72;
-  let s = 0, mejor = -1, fin = 0;
-  for (let i = 0; i < p.length; i++) { s += p[i] - (i >= W ? p[i - W] : 0); if (s > mejor) { mejor = s; fin = i; } }
-  let a = Math.max(0, fin - W + 1), b = fin;
-  while (a < b && p[a] < 0.1) a++;
-  while (b > a && p[b] < 0.1) b--;
-  const ll = p.slice(a, b + 1), et = d.hourly.et0_fao_evapotranspiration.slice(a, b + 1).map((v) => v ?? 0.1);
-  const sm = d.hourly.soil_moisture_0_to_7cm, theta = sm[Math.max(0, a - 1)] ?? sm[a] ?? 0.3;
-  // Lluvia de los 30 días previos (para contar cuán cargado venía el suelo)
-  const previa = p.slice(Math.max(0, a - 720), a).reduce((x, y) => x + y, 0);
-  return { tipo: "nina", titulo: T.nombre, lluvia: ll, et0: et, theta, total: ll.reduce((x, y) => x + y, 0), pico: Math.max(...ll),
-    inicio: aMs(d.hourly.time[a]), fin: aMs(d.hourly.time[b]), previa, fuente: "ERA5 (Open-Meteo)" };
+// Resumen de la lluvia de una temporada en el punto (ERA5 diario): total, mes más lluvioso y peor racha de 3 días
+async function lluviaTemporada(punto, T) {
+  const [lon, lat] = punto.map((v) => v.toFixed(3));
+  const d = await pedirJson(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${T.desde}&end_date=${T.hasta}&daily=precipitation_sum${ZONA_BOG}`);
+  const t = d.daily.time, p = d.daily.precipitation_sum.map((v) => v ?? 0), porMes = new Map();
+  t.forEach((dia, i) => porMes.set(dia.slice(0, 7), (porMes.get(dia.slice(0, 7)) ?? 0) + p[i]));
+  const [mes, mesMm] = [...porMes].reduce((a, b) => (b[1] > a[1] ? b : a));
+  let racha = 0, rachaIni = t[0];
+  for (let i = 2; i < p.length; i++) { const s3 = p[i] + p[i - 1] + p[i - 2]; if (s3 > racha) { racha = s3; rachaIni = t[i - 2]; } }
+  return { total: p.reduce((a, b) => a + b, 0), meses: porMes.size, mes, mesMm, racha, rachaIni };
 }
 // Pronóstico hora por hora de los próximos 16 días (mejor modelo disponible para el punto)
 async function lluviaPronostico(punto) {

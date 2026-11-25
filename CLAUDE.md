@@ -5,7 +5,7 @@ Prototipo web del trabajo final de TIG (Especialización en Análisis Espacial, 
 ## Idea del producto
 - La finca se registra una sola vez (lindero en shapefile .zip, KML/KMZ, GeoJSON o dibujado) y la usan dos módulos.
 - Módulo 1, vigor y temperatura: temperatura del aire y del suelo, heladas, lluvia y balance hídrico (Open-Meteo). Mapas del círculo con menú de capas (temperatura de superficie Landsat, lluvia 30 días Open-Meteo, NDVI y NDMI Sentinel-2) desde Microsoft Planetary Computer (`js/satelite.js`); las series de tiempo siguen en Google Earth Engine (`gee/`).
-- Módulo 2, amenaza de inundación: modelo hidráulico 2D sobre el relieve del círculo de análisis, con escenarios de lluvia (La Niña con ERA5, pronóstico 16 días, tormenta personalizada), crecida del río y suelo.
+- Módulo 2, amenaza de inundación: modelo hidráulico 2D sobre el relieve del círculo de análisis, con escenarios de lluvia (pronóstico 16 días o tormenta personalizada) y suelo; tabla de referencia con la lluvia ERA5 de las temporadas La Niña en la finca (botón «Probar»). El motor aún acepta crecida del río, pero la interfaz ya no la ofrece.
 - En Colombia El Niño trae sequía y heladas; La Niña y las temporadas de lluvias traen inundaciones.
 
 ## Cómo correrlo
