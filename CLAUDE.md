@@ -20,7 +20,7 @@ Prototipo web del trabajo final de TIG (Especialización en Análisis Espacial, 
 - `js/inundacion.js`: relieve, grilla (tope `MAX_CELDAS`), ríos/lagunas del mapa base, escenarios de lluvia, estadísticas y dibujo del agua.
 - `js/clima.js`: clima y alertas del módulo 1.
 - `js/satelite.js`: capas satelitales del módulo 1 (búsqueda de la escena más despejada, recorte al círculo, colores, leyendas, promedio de la finca).
-- `js/app.js`: mapa, pestañas, registro de la finca, gráficos SVG y mensajes tipo WhatsApp.
+- `js/app.js`: mapa, pestañas, registro de la finca, gráficos SVG con su texto de lectura.
 - `datos/`: finca de ejemplo en shapefile (9377, 3116, UTM 18N) para probar la carga.
 
 ## Convenciones

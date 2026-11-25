@@ -180,11 +180,6 @@ $("btn-fin-dibujo").onclick = terminarDibujo;
 $("btn-cancelar-dibujo").onclick = salirDibujo;
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && dibujo) salirDibujo(); });
 
-// Copiar mensajes
-document.querySelectorAll("[data-copiar]").forEach((b) => (b.onclick = async () => {
-  try { await navigator.clipboard.writeText($(b.dataset.copiar).textContent); b.textContent = "Copiado ✓"; setTimeout(() => (b.textContent = "Copiar mensaje"), 1500); } catch { b.textContent = "No se pudo copiar"; }
-}));
-
 // ===================== Gráficos (SVG) =====================
 const NS = "http://www.w3.org/2000/svg";
 function svg(w, h) { const s = document.createElementNS(NS, "svg"); s.setAttribute("viewBox", `0 0 ${w} ${h}`); return s; }
@@ -273,10 +268,6 @@ function pintarClima(c) {
   $("clima-alertas").innerHTML = c.alertas.map((x) => `<li class="${x.nivel}"><b>${x.titulo}</b>${x.texto}</li>`).join("");
   graficoTemperatura($("graf-temp"), c.dias);
   graficoLluvia($("graf-lluvia"), c.dias);
-  const fecha = new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
-  const principales = c.alertas.filter((x) => x.nivel !== "ok");
-  $("msg-clima").textContent = `CultivoAlerta · ${finca.properties.nombre}\n${fecha}\n\nAhora: ${a.temperature_2m != null ? fmt(a.temperature_2m) + " °C" : "–"} · suelo ${c.sueloAhora.t0 != null ? fmt(c.sueloAhora.t0) + " °C" : "–"}\nMínima próxima noche: ${Number.isFinite(minProx) ? fmt(minProx) + " °C" : "–"}\nLluvia 30 días: ${fmt(c.lluvia30, 0)} mm (balance ${c.balance30 >= 0 ? "+" : ""}${fmt(c.balance30, 0)} mm)\n\n`
-    + (principales.length ? principales.map((x) => `⚠️ ${x.titulo}: ${x.texto}`).join("\n") : "✅ Sin alertas para los próximos 7 días.");
 }
 
 // ---------- Mapas satelitales del círculo (temperatura, lluvia, NDVI, NDMI) ----------
@@ -407,9 +398,7 @@ function mostrarResultado(M) {
   const reco = { alta: "Saque animales, maquinaria e insumos de los bajos; limpie zanjas y drenajes; si puede, adelante la cosecha de los lotes bajos.",
     media: "Limpie zanjas y drenajes y evite dejar maquinaria o insumos en los bajos señalados.",
     baja: "Riesgo bajo: revise que los drenajes de los bajos estén despejados.", sin: "Sin acciones necesarias con este escenario." };
-  $("msg-sim").textContent = `CultivoAlerta · Amenaza de inundación\nFinca: ${p.nombre} (${fmt(p.areaHa, 1)} ha)\nEscenario: ${esc.titulo} (${fmt(total, 0)} mm${fechas})${M.par.crecida ? `, río ${fmt(M.par.crecida, 2)} m arriba` : ""}\n\n`
-    + (R.nivel === "sin" ? "Con este escenario su finca no tendría zonas con más de 10 cm de agua.\n" : `${fmt(R.haPico, 2)} ha (${fmt(R.pctPico, 0)} %) de su finca quedarían con más de 10 cm de agua, hasta ${fmt(R.maxProf, 2)} m en la parte más baja. El agua duraría unas ${R.horasAgua} horas.\n`)
-    + `\nRecomendación: ${reco[R.nivel]}`;
+  $("res-reco").textContent = reco[R.nivel];
   const cu = M.cuenta, ll = cu.lluvia || 1;
   $("res-datos").textContent = `Grilla de ${M.d.nx} × ${M.d.ny} celdas de ${fmt(M.d.dx, 0)} m · relieve SRTM ~30 m · ${M.d.resumen.hayRio ? "río del mapa dentro del círculo" : "sin río del mapa en el círculo"} · suelo ${M.par.suelo.nombre.toLowerCase()} · humedad inicial ${fmt((M.par.theta0 / M.par.suelo.thetaS) * 100, 0)} % de saturación. `
     + `Balance del agua de lluvia: ${fmt((100 * cu.infiltrada) / ll, 0)} % se infiltró, ${fmt((100 * cu.evaporada) / ll, 0)} % se evaporó, ${fmt((100 * Math.max(0, cu.salida)) / ll, 0)} % salió del área y ${fmt((100 * cu.superficie) / ll, 0)} % quedó en superficie. Fuente de la lluvia: ${esc.fuente}.`;
