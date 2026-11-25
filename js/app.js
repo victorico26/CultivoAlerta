@@ -68,6 +68,7 @@ function irA(tab) {
   if (mapa.getLayer("agua-sim")) mapa.setLayoutProperty("agua-sim", "visibility", tab === "vigor" ? "none" : "visible");
   $("leyenda").classList.toggle("oculta-vigor", tab === "vigor");
   refrescarMaqueta();
+  if (tab === "inundacion" && circ) cargarTablaNina();
   if (tab === "inundacion" && circ) { const c = cajaCirculo(circ.centro, circ.km * 1.15); mapa.fitBounds([[c[0], c[1]], [c[2], c[3]]], { padding: 30, duration: 700 }); }
 }
 document.querySelectorAll(".pestana").forEach((b) => (b.onclick = () => !b.disabled && irA(b.dataset.tab)));
@@ -201,6 +202,12 @@ function graficoTemperatura(cont, dias) {
   el(s, "polygon", { points: banda, fill: "#f2b705", "fill-opacity": 0.13 });
   const linea = (k, col, extra = {}) => el(s, "polyline", { points: dias.map((d, i) => (d[k] == null ? null : `${X(i)},${Y(d[k])}`)).filter(Boolean).join(" "), fill: "none", stroke: col, "stroke-width": 1.8, ...extra });
   linea("tmax", "#d0533f"); linea("tmin", "#2b7bba"); linea("sueloMin", "#7b5cc4", { "stroke-dasharray": "2 2", "stroke-width": 1.4 });
+  // Un punto por día en la máxima y la mínima (blancos por dentro en los días de pronóstico); al pasar el ratón, el valor
+  for (const [k, col] of [["tmax", "#d0533f"], ["tmin", "#2b7bba"]]) dias.forEach((d, i) => {
+    if (d[k] == null) return;
+    const c = el(s, "circle", { cx: X(i), cy: Y(d[k]), r: 2.1, fill: d.pasado || d.esHoy ? col : "#fff", stroke: col, "stroke-width": 1 });
+    el(c, "title", {}, `${diaCorto(d.dia)}: ${k === "tmax" ? "máxima" : "mínima"} ${fmt(d[k])} °C`);
+  });
   if (kh >= 0) el(s, "line", { x1: X(kh), x2: X(kh), y1: m.t, y2: H - m.b, stroke: "#1f5130", "stroke-width": 1.2 });
   [0, Math.floor(dias.length / 3), Math.floor((2 * dias.length) / 3), dias.length - 1].forEach((i) => el(s, "text", { x: X(i), y: H - m.b + 13, "text-anchor": i === 0 ? "start" : i === dias.length - 1 ? "end" : "middle" }, diaCorto(dias[i].dia)));
   const ley = el(s, "g", {});
@@ -338,14 +345,13 @@ async function pintarResumenSat() {
 }
 
 // ===================== Módulo 2: inundación =====================
-for (const [k, v] of Object.entries(NINAS)) $("temporada").add(new Option(v.nombre, k));
 for (const [k, v] of Object.entries(TEXTURAS)) $("suelo").add(new Option(v.nombre + (k === "franco arcilloso" ? " (típico de la Sabana)" : ""), k));
 $("suelo").value = "franco arcilloso";
 document.querySelectorAll("input[name=esc]").forEach((r) => (r.onchange = () => {
   const v = document.querySelector("input[name=esc]:checked").value;
   document.querySelectorAll(".sub[data-para]").forEach((s) => (s.hidden = s.dataset.para !== v));
 }));
-const etiquetas = { factor: (v) => `× ${fmt(v, 1)}`, mm: (v) => `${v} mm`, horas: (v) => `${v} h`, crecida: (v) => `${fmt(v, v % 1 ? 2 : 0)} m` };
+const etiquetas = { mm: (v) => `${v} mm`, horas: (v) => `${v} h` };
 for (const [k, f] of Object.entries(etiquetas)) $(k).addEventListener("input", () => ($(`${k}-v`).textContent = f(+$(k).value)));
 
 function avisoSim(txt, error = false) { const a = $("aviso-sim"); a.hidden = !txt; a.textContent = txt ?? ""; a.classList.toggle("error", error); }
@@ -364,11 +370,10 @@ $("btn-simular").onclick = async () => {
     } else await encuadrarYEsperar(cajaCirculo(circ.centro, circ.km + MARGEN_KM));
     const tipo = document.querySelector("input[name=esc]:checked").value;
     progreso(tipo === "personalizada" ? "Preparando la tormenta…" : "Consultando la lluvia en Open-Meteo…", 0.12);
-    const esc = tipo === "nina" ? await lluviaNina(circ.centro, $("temporada").value) : tipo === "pronostico" ? await lluviaPronostico(circ.centro) : lluviaPersonalizada(+$("mm").value, +$("horas").value);
+    const esc = tipo === "pronostico" ? await lluviaPronostico(circ.centro) : lluviaPersonalizada(+$("mm").value, +$("horas").value);
     const suelo = TEXTURAS[$("suelo").value], hum = $("humedad").value;
     const theta0 = hum === "datos" ? (esc.theta ?? 0.7 * suelo.thetaS) : +hum * suelo.thetaS;
-    const par = { suelo, theta0, crecida: +$("crecida").value, factor: tipo === "nina" ? +$("factor").value : 1 };
-    if (par.crecida > 0 && !terreno.resumen.hayRio) avisoSim("No hay un río del mapa dentro del círculo: la crecida no cambia el resultado. Amplía el margen si la finca está cerca de un río.");
+    const par = { suelo, theta0, crecida: 0, factor: 1 };
     progreso("Simulando el agua hora por hora…", 0.15);
     modelo = correrModelo(terreno, esc, par,
       (M, k, n) => progreso(`Simulando hora ${k + 1} de ${n}…`, 0.15 + 0.85 * ((k + 1) / n)),
@@ -383,7 +388,7 @@ function mostrarResultado(M) {
   const total = esc.total * (M.par.factor ?? 1);
   const fechas = esc.inicio && esc.tipo === "nina" ? ` · ${new Date(esc.inicio).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}` : "";
   $("res-nivel").className = `nivel ${R.nivel}`;
-  $("res-nivel").innerHTML = `${titulos[R.nivel]}<small>${esc.titulo}: ${fmt(total, 0)} mm${fechas}${M.par.crecida ? ` · río ${fmt(M.par.crecida, 2)} m sobre lo normal` : ""}</small>`;
+  $("res-nivel").innerHTML = `${titulos[R.nivel]}<small>${esc.titulo}: ${fmt(total, 0)} mm${fechas}</small>`;
   const kpi = (t, v, sub = "") => `<div class="kpi"><span>${t}</span><b>${v}</b><small>${sub}</small></div>`;
   $("res-kpis").innerHTML = [
     kpi("Finca con agua (pico)", `${fmt(R.haPico, R.haPico < 10 ? 2 : 1)} ha`, `${fmt(R.pctPico, 0)} % de ${fmt(p.areaHa, 1)} ha · más de 10 cm`),
@@ -412,6 +417,31 @@ async function irAHora(k) {
   graficoSimulacion($("graf-sim"), modelo, k);
   await dibujarAgua(modelo, k, verMax);
   if (maqueta && document.querySelector(".pestana.activa")?.dataset.tab === "inundacion") aguaMaqueta(modelo, k, verMax);
+}
+
+// ---------- Tabla: lluvia de las temporadas La Niña en la finca (ERA5) ----------
+let tablaNina = null;
+async function cargarTablaNina() {
+  if (!circ) return;
+  const clave = circ.centro.map((v) => v.toFixed(3)).join();
+  if (tablaNina?.clave === clave) return;
+  tablaNina = { clave };
+  $("tabla-nina").innerHTML = '<p class="mini">Cargando la lluvia de esas temporadas…</p>';
+  try {
+    const filas = await Promise.all(Object.entries(NINAS).map(async ([k, T]) => ({ k, T, ...(await lluviaTemporada(circ.centro, T)) })));
+    if (tablaNina.clave !== clave) return;
+    tablaNina.filas = filas;
+    const mes = (m) => new Date(`${m}-15T12:00:00`).toLocaleDateString("es-CO", { month: "short", year: "numeric" });
+    $("tabla-nina").innerHTML = `<table><thead><tr><th>Temporada</th><th>Total</th><th>Mes más lluvioso</th><th>Peores 3 días</th><th></th></tr></thead><tbody>${
+      filas.map((f, i) => `<tr><td>${f.T.nombre.replace("La Niña ", "")}<small>${f.meses} meses</small></td><td>${fmt(f.total, 0)} mm<small>≈ ${fmt(f.total / f.meses, 0)} mm/mes</small></td><td>${fmt(f.mesMm, 0)} mm<small>${mes(f.mes)}</small></td><td>${fmt(f.racha, 0)} mm<small>${new Date(`${f.rachaIni}T12:00:00`).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}</small></td><td><button class="sec mini-btn" data-nina="${i}">Probar</button></td></tr>`).join("")
+    }</tbody></table>`;
+    $("tabla-nina").querySelectorAll("[data-nina]").forEach((b) => (b.onclick = () => {
+      const f = filas[+b.dataset.nina], mm = Math.min(+$("mm").max, Math.max(+$("mm").min, Math.round(f.racha / 5) * 5));
+      document.querySelector("input[name=esc][value=personalizada]").click();
+      $("mm").value = mm; $("horas").value = 72;
+      $("mm").dispatchEvent(new Event("input")); $("horas").dispatchEvent(new Event("input"));
+    }));
+  } catch (e) { console.error(e); tablaNina = null; $("tabla-nina").innerHTML = `<p class="mini">${e.message}</p>`; }
 }
 
 // ---------- Maqueta 3D del círculo (botón «Maqueta 3D» del mapa, en los tres módulos) ----------
