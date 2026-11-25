@@ -93,17 +93,10 @@
     <!-- ============ 3. INUNDACIÓN ============ -->
     <section class="seccion" id="tab-inundacion">
       <h2>Simulador de inundación sobre tu finca</h2>
-      <p class="ayuda">Modelo hidráulico 2D sobre el relieve real del círculo: la lluvia se infiltra según el suelo, escurre por las pendientes y se junta en los bajos. El río puede crecer por encima de su nivel normal.</p>
+      <p class="ayuda">Modelo hidráulico 2D sobre el relieve real del círculo: la lluvia se infiltra según el suelo, escurre por las pendientes y se junta en los bajos.</p>
       <fieldset class="grupo">
         <legend>Escenario de lluvia</legend>
-        <label class="opcion"><input type="radio" name="esc" value="nina" checked> Peor tormenta de una temporada La Niña</label>
-        <div class="sub" data-para="nina">
-          <select id="temporada"></select>
-          <label for="factor">Ajuste de la lluvia ERA5 <b id="factor-v">× 1,3</b></label>
-          <input type="range" id="factor" min="1" max="1.8" step="0.1" value="1.3">
-          <p class="mini">ERA5 promedia la lluvia en celdas de ~10–25 km y suele quedarse corto en tormentas fuertes; el ajuste lo compensa.</p>
-        </div>
-        <label class="opcion"><input type="radio" name="esc" value="pronostico"> Pronóstico de los próximos 16 días</label>
+        <label class="opcion"><input type="radio" name="esc" value="pronostico" checked> Pronóstico de los próximos 16 días</label>
         <label class="opcion"><input type="radio" name="esc" value="personalizada"> Tormenta personalizada</label>
         <div class="sub" data-para="personalizada" hidden>
           <label for="mm">Lluvia total <b id="mm-v">80 mm</b></label>
@@ -111,12 +104,15 @@
           <label for="horas">Duración <b id="horas-v">12 h</b></label>
           <input type="range" id="horas" min="1" max="72" step="1" value="12">
         </div>
+        <div class="tabla-nina">
+          <b>Lluvia en tu finca durante las temporadas La Niña</b>
+          <p class="mini">Para tener una referencia de cuánto puede llover. Con «Probar» se carga la peor racha de 3 días de esa temporada como tormenta personalizada.</p>
+          <div id="tabla-nina"><p class="mini">Cargando la lluvia de esas temporadas…</p></div>
+          <p class="mini">Datos ERA5 (Open-Meteo) en el centro de la finca. ERA5 promedia la lluvia en celdas de ~10 a 25 km, así que las tormentas locales pueden haber sido más fuertes.</p>
+        </div>
       </fieldset>
       <fieldset class="grupo">
         <legend>Condiciones del terreno</legend>
-        <label for="crecida">Nivel del río sobre lo normal <b id="crecida-v">0 m</b></label>
-        <input type="range" id="crecida" min="0" max="4" step="0.25" value="0">
-        <p class="mini">En La Niña 2010-2011 el río Bogotá se desbordó por crecidas que duraron semanas: sube este valor para simular un río crecido.</p>
         <div class="fila">
           <label for="suelo">Suelo</label>
           <select id="suelo"></select>
@@ -139,6 +135,7 @@
         <div class="nivel" id="res-nivel"></div>
         <div class="kpis" id="res-kpis"></div>
         <h3>Lluvia y agua en la finca, hora por hora</h3>
+        <p class="lectura">Se lee de izquierda a derecha, una columna por hora. Las <b class="t-lluvia">barras celestes</b> cuelgan desde arriba y muestran cuánta lluvia cae en cada hora (milímetros por hora, escala de la derecha). La <b class="t-agua">zona azul oscura</b> que sube desde abajo es la parte de tu finca con más de 10 cm de agua, en hectáreas (escala de la izquierda). Fíjate en que el agua suele seguir subiendo un rato después de que para la lluvia, porque baja de los terrenos vecinos, y luego tarda en irse. La <b>línea verde</b> marca la hora que se ve en el mapa; haz clic en el gráfico para ver otra hora.</p>
         <div class="grafico" id="graf-sim"></div>
         <div class="linea-tiempo">
           <button id="btn-play" class="sec redondo" aria-label="Reproducir">▶</button>
