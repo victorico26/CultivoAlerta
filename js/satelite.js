@@ -189,7 +189,7 @@ function armarImagen(capa, im, caja, centro, km, finca) {
   ctx.putImageData(img, 0, 0);
   const [o, s, e, n] = caja;
   return {
-    url: cv.toDataURL("image/png"), coordenadas: [[o, n], [e, n], [e, s], [o, s]],
+    url: cv.toDataURL("image/png"), lienzo: cv, coordenadas: [[o, n], [e, n], [e, s], [o, s]],
     mediaFinca: nF ? sF / nF : null, min, max,
     nubes: tC ? 1 - nC / tC : 0, clasesFinca: nF ? cuentaClases.map((c) => c / nF) : null,
   };

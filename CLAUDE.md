@@ -16,7 +16,7 @@ Prototipo web del trabajo final de TIG (Especialización en Análisis Espacial, 
 ## Estructura
 - `js/geo.js`: lectura de archivos, sistemas de referencia de Colombia (9377, 3114–3118, 4326, 4686, 32618, 32619), área, perímetro, círculo.
 - `js/hidraulica.js`: motor hidráulico en Web Worker (creado desde Blob para que funcione con file://).
-- `js/maqueta.js`: maqueta 3D del círculo (three.js r147) con el agua de cada hora; adaptada, con permiso, de la maqueta de Diamela Dego.
+- `js/maqueta.js`: maqueta 3D del círculo (three.js r147), botón «Maqueta 3D» del mapa en los tres módulos: finca sola, capa satelital del módulo 1 o agua de cada hora; adaptada, con permiso, de la maqueta de Diamela Dego.
 - `js/inundacion.js`: relieve, grilla (tope `MAX_CELDAS`), ríos/lagunas del mapa base, escenarios de lluvia, estadísticas y dibujo del agua.
 - `js/clima.js`: clima y alertas del módulo 1.
 - `js/satelite.js`: capas satelitales del módulo 1 (búsqueda de la escena más despejada, recorte al círculo, colores, leyendas, promedio de la finca).

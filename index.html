@@ -147,8 +147,7 @@
           <span id="hora-txt"></span>
         </div>
         <label class="opcion"><input type="checkbox" id="ver-max"> Ver la profundidad máxima alcanzada</label>
-        <button class="sec ancho" id="btn-maqueta">Ver maqueta 3D del círculo</button>
-        <p class="mini">La maqueta muestra el círculo recortado como un bloque de tierra, con la imagen satelital y el agua de cada hora. Adaptada, con permiso, de la maqueta de Diamela Dego.</p>
+        <p class="mini">Con el botón «Maqueta 3D» del mapa ves el círculo como un bloque de tierra, con la imagen satelital y el agua de cada hora.</p>
         <h3>Mensaje que recibiría el agricultor</h3>
         <div class="whatsapp" id="msg-sim"></div>
         <button class="sec" data-copiar="msg-sim">Copiar mensaje</button>
@@ -164,8 +163,9 @@
     <div id="mapa"></div>
     <div class="controles-mapa">
       <button id="btn-base" class="chip activo">Satélite</button>
-      <button id="btn-3d" class="chip">Vista 3D</button>
+      <button id="btn-3d" class="chip" disabled title="Registra la finca para ver la maqueta">Maqueta 3D</button>
     </div>
+    <div class="estado-mapa" id="estado-mapa" hidden></div>
     <div class="menu-sat" id="menu-sat" hidden>
       <b>Capa del mapa</b>
       <div class="menu-sat-botones">
